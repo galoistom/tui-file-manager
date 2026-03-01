@@ -1,0 +1,202 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+
+	"path/filepath"
+	//	"strings"
+
+	tea "charm.land/bubbletea/v2"
+)
+
+type fileitm struct{
+	name string
+	path string
+	mode string
+	isdic bool
+}
+
+type module struct{
+	cursor int
+	selected map[int]struct{}
+	entries []fileitm
+	path string
+	height int
+	offset int
+}
+
+type itemsMsg []fileitm
+//type choiseMsg []string
+
+func initialModel(path string) module {
+	return module{
+		selected: make(map[int]struct{}),
+		cursor: 0,
+		path: path,
+	}
+}
+
+func (m module) Init() tea.Cmd {
+	return fetchFile(m.path)
+}
+
+func fetchFile(path string) tea.Cmd {
+	return func() tea.Msg {
+		ent, err:= os.ReadDir(path)
+		if err!=nil{
+			return err
+		}
+		items:= []fileitm{{
+			name: "../",
+			path: filepath.Dir(path),
+			mode: "----------",
+			isdic: true,
+		}}
+		for _, entry:= range ent {
+			info, _:= entry.Info()
+			items= append(items, fileitm{
+				name: entry.Name(),
+				path: filepath.Join(path, entry.Name()),
+				isdic: entry.IsDir(),
+				mode: info.Mode().String(),
+			})
+		}
+		return itemsMsg(items)
+	}
+}
+
+func open(path string) tea.Cmd{
+	return func() tea.Msg{
+		err:= exec.Command("xdg-open", path).Start()
+		if err!=nil{return err}
+		return nil
+	}
+}
+
+func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.height= msg.Height - 4
+	
+	case itemsMsg:
+		m.entries= msg
+
+	        // Is it a key press?
+	case tea.KeyPressMsg:
+
+		// Cool, what was the actual key pressed?
+//		fmt.Printf("Key pressed: %s\n", msg.String())
+		switch msg.String() {
+		
+
+		// These keys should exit the program.
+		case "ctrl+c", "q":
+			return m, tea.Quit
+
+		case "g", "alt+shift+,":
+			m.cursor=0
+
+		case "G", "alt+shift+.":
+			m.cursor=len(m.entries)-1
+			m.offset= max(0,m.cursor-m.height+1)
+
+		// The "up" and "k" keys move the cursor up
+		case "up", "k", "ctrl+p":
+			if m.cursor>0{
+				m.cursor--
+			}
+			if m.cursor <m.offset {
+				m.offset= m.cursor
+			}
+			
+		// The "down" and "j" keys move the cursor down
+		case "down", "j", "ctrl+n":
+			if m.cursor< len(m.entries)-1{
+				m.cursor++
+			}
+			if m.cursor >= m.offset + m.height {
+				m.offset= m.cursor - m.height + 1
+			}
+			
+		// The "enter" key and the space bar toggle the selected state
+		// for the item that the cursor is pointing at.
+		case "space":
+			_, ok := m.selected[m.cursor]
+                        if ok {
+				delete(m.selected, m.cursor)
+			} else {
+				m.selected[m.cursor] = struct{}{}
+			}
+			if m.cursor< len(m.entries)-1{
+				m.cursor++
+			}
+			if m.cursor >= m.offset + m.height {
+				m.offset= m.cursor - m.height + 1
+			}
+		case "enter":
+			selected:= m.entries[m.cursor]
+			if selected.isdic {
+				m.path= selected.path
+				m.cursor=0
+				m.offset=0
+				return m, fetchFile(m.path)
+			} else {
+				return m, open(selected.path)
+			}
+		}
+	}
+
+        // Return the updated model to the Bubble Tea runtime for processing.
+        // Note that we're not returning a command.
+        return m, nil
+}
+
+func (m module) View() tea.View {
+	s:=m.path + "\n"
+
+	end:= min(m.offset + m.height, len(m.entries))
+	visible:= m.entries[m.offset:end]
+	for i, item := range visible{
+		absolute:= i+ m.offset
+		cursor:= " "
+		if m.cursor== absolute{
+			cursor=">"
+		}
+		checked:= " "
+		if _, ok:= m.selected[absolute]; ok{
+			checked="x"
+		}
+		s+= fmt.Sprintf("%s%s %s %s\n", cursor, checked, item.mode, item.name)
+	}
+	s+= "\n type \"q\" to quit"
+	// Send the UI for rendering
+	return tea.View{
+		Content: s,
+		AltScreen: true,
+	}
+}
+
+func main() {
+	args:= os.Args
+	currentPath,err:=os.Getwd()
+	if err!=nil{fmt.Println("failed to get position:", err)}
+	if len(args)>1{
+		currentPath= args[1]
+	}
+	f, err:= tea.LogToFile("debug.log", "debug")
+	if err!= nil{
+		log.Fatalf("err: %e", err)
+	}
+	defer f.Close()
+	p := tea.NewProgram(
+		initialModel(currentPath),
+	)
+        if _, err = p.Run(); err != nil {
+		fmt.Printf("Alas, there's been an error: %v", err)
+		log.Fatal(err)
+                os.Exit(1)
+	}
+}
