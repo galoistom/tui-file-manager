@@ -1,8 +1,10 @@
 package main
 
 import (
-	tea "charm.land/bubbletea/v2"
 	"os/exec"
+	"regexp"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 func (m *module) GotoFile(n int) {
@@ -10,7 +12,8 @@ func (m *module) GotoFile(n int) {
 		return
 	}
 	if n>m.cursor{
-		m.offset=min(max(len(m.entries)-m.height,0), max(m.offset, n+GAP-m.height))
+		m.offset=min(max(len(m.entries)-m.height,0),
+			max(m.offset, n+GAP-m.height))
 	} else if n< m.cursor{
 		m.offset=max(0, min(m.offset, n-GAP))
 	}
@@ -33,4 +36,28 @@ func OpenEdit(path string) tea.Cmd {
 		}
 		return  editorMsg{}
 	})
+}
+
+func matchSimple(fileName, pattern string) bool{
+	re, err:= regexp.Compile("(?i)"+ pattern)
+	if err!=nil{return false}
+	return re.MatchString(fileName)
+}
+
+func (m *module) Search(pattern string,place int) int{
+	if m.searching==1{
+		for i:= place-1; i>=0; i--{
+			if matchSimple(m.entries[i].name, pattern){
+				return i
+			}
+		}
+	} else if m.searching==2{
+		end:=len(m.entries)
+		for i:= place+1; i<end; i++{
+			if matchSimple(m.entries[i].name, pattern){
+				return i
+			}
+		}		
+	}
+	return -1
 }

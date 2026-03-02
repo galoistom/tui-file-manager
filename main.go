@@ -61,6 +61,8 @@ type module struct{
 	offset int
 	ti textinput.Model
 	typing bool
+	searching int
+	temp int
 	message string
 	isError bool
 }
@@ -165,6 +167,53 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m,cmd
 	}
+	if m.searching>0{
+		switch msg:= msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "esc", "ctrl+g":
+				m.searching=0;m.ti.SetValue("")
+				return m, nil
+			case "enter":
+				m.searching=0
+				m.temp=m.cursor
+				m.ti.SetValue("")
+			case "ctrl+s":
+				if m.searching==1{
+					m.temp=m.cursor
+				        place:= m.Search(m.ti.Value(), m.temp)
+        			        if place==-1{
+					        m.GotoFile(m.temp)
+					        return m,cmd				
+				        }
+				        m.GotoFile(place)
+				} else {
+					m.GotoFile(m.temp)
+				}
+			case "ctrl+r":
+				if m.searching==2{
+					m.temp=m.cursor
+				        place:= m.Search(m.ti.Value(), m.temp)
+        			        if place==-1{
+					        m.GotoFile(m.temp)
+					        return m,cmd				
+				        }
+				        m.GotoFile(place)
+				} else {
+					m.GotoFile(m.temp)
+				}
+			default:
+				m.ti, cmd= m.ti.Update(msg)
+				place:= m.Search(m.ti.Value(), m.temp)
+			        if place==-1{
+					m.GotoFile(m.temp)
+					return m,cmd				
+				}
+				m.GotoFile(place)
+			}
+		}
+		return m,cmd
+	}
 	switch msg := msg.(type) {
 	case clearMsg:
 		m.message= ""
@@ -247,7 +296,17 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "alt+x", ":":
 			m.typing=true
 			m.ti.Focus()
+
+		case "ctrl+s":
+			m.searching=1
+			m.ti.Focus()
+			m.temp=m.cursor
+		case "ctrl+r":
+			m.searching=2
+			m.ti.Focus()
+			m.temp=m.cursor
 		}
+
 	}
 
         // Return the updated model to the Bubble Tea runtime for processing.
@@ -287,6 +346,10 @@ func (m module) View() tea.View {
 	footer:= dimStyle.Render("\n type \"q\" to quit")
 	if m.typing {
 		footer= inputStyle.Render("\n M-x: ") + m.ti.View()
+	}else if m.searching==1 {
+		footer= inputStyle.Render("\n C-s: ") + m.ti.View()
+	}else if m.searching==2 {
+		footer= inputStyle.Render("\n C-r: ") + m.ti.View()
 	} else if m.message!=""{
 		if m.isError {
 			footer= errorStyle.Render(" ! " + m.message)

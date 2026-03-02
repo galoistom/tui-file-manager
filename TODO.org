@@ -22,3 +22,5 @@
 
 * TODO multiple tabs
 
+* DONE search file/folders
+
