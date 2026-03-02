@@ -1,0 +1,24 @@
+* DONE navigate around file
+
+* DONE edit file in vim
+
+* DONE delete file
+
+* DONE open file
+
+* DONE shell command support
+
+* DONE input command block
+
+* TODO copy file/folders
+
+* TODO new file/folders
+
+* TODO preview file/folders
+
+* TODO terminal
+
+* TODO renaming files/folders
+
+* TODO multiple tabs
+

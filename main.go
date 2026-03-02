@@ -67,6 +67,7 @@ type module struct{
 
 type itemsMsg []fileitm
 type editorMsg struct{}
+type clearMsg struct{}
 
 func initialModel(path string) module {
 	ti:= textinput.New()
@@ -83,6 +84,12 @@ func initialModel(path string) module {
 
 func (m module) Init() tea.Cmd {
 	return fetchFile(m.path)
+}
+
+func clearMessageAfter(d time.Duration) tea.Cmd {
+    return tea.Tick(d, func(t time.Time) tea.Msg {
+        return clearMsg{} 
+    })
 }
 
 func fetchFile(path string) tea.Cmd {
@@ -108,68 +115,30 @@ func fetchFile(path string) tea.Cmd {
 	}
 }
 
-func open(path string) tea.Cmd{
-	return func() tea.Msg{
-		err:= exec.Command("xdg-open", path).Start()
-		if err!=nil{return err}
-		return nil
-	}
-}
-
-func clearMessageAfter(d time.Duration) tea.Cmd {
-    return tea.Tick(d, func(t time.Time) tea.Msg {
-        return clearMsg{} // 定义一个空结构体消息
-    })
-}
-
-type clearMsg struct{}
-
-func (m *module) gotoFile(n int) {
-	if n>len(m.entries)-1 || n<0{
-		return
-	}
-	if n>m.cursor{
-		m.offset=min(max(len(m.entries)-m.height,0), max(m.offset, n+GAP-m.height))
-	} else if n< m.cursor{
-		m.offset=max(0, min(m.offset, n-GAP))
-	}
-	m.cursor=n
-}
-
-func openEdit(path string) tea.Cmd {
-	c:= exec.Command("vim", path)
-	return tea.ExecProcess(c, func(err error) tea.Msg{
-		if err!=nil{
-			return err
-		}
-		return  editorMsg{}
-	})
-}
-
 func (m *module) execCommand() {
 	insertCommand:= strings.Fields(m.ti.Value())
 	switch insertCommand[0] {
 	case "goto" :
 		n,err:= strconv.Atoi(insertCommand[1])
 		if err!=nil{m.message="Not numbers";m.isError=true;return}
-		m.gotoFile(n)
+		m.GotoFile(n)
 	case "down" :
 		n,err:= strconv.Atoi(insertCommand[1])
 		if err!=nil{m.message="Not numbers";m.isError=true;return}
-		m.gotoFile(n+m.cursor)
+		m.GotoFile(n+m.cursor)
 	case "up" :
 		n,err:= strconv.Atoi(insertCommand[1])
 		if err!=nil{m.message="Not numbers";m.isError=true;return}
-		m.gotoFile(m.cursor-n)
+		m.GotoFile(m.cursor-n)
 	case "sh" :
 		command:=exec.Command("sh","-c",strings.Join(insertCommand[1:], " "))
+		command.Dir= m.path
 		if err:=command.Run();err!=nil{
 			m.message="fialed to execute";m.isError=true;return
 		}
 	default:
 		m.message= fmt.Sprintf("Unknow command: %s", insertCommand[0])
 	}
-	
 }
 
 func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -179,16 +148,17 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "esc", "ctrl+g":
-				m.typing=false
-				m.ti.SetValue("")
+				m.typing=false;m.ti.SetValue("")
+				m.message="";m.isError=false
 				return m,nil
 			case "enter":
-				m.message= ""
-				m.isError= false
+				m.message= "";m.isError= false
 				m.execCommand()
-				m.typing=false
-				m.ti.SetValue("")
-				return m,clearMessageAfter(3*time.Second)
+				m.typing=false;m.ti.SetValue("")
+				return m,tea.Batch(
+					fetchFile(m.path),
+					clearMessageAfter(3*time.Second),
+				)
 			default:
 				m.ti, cmd= m.ti.Update(msg)
 			}
@@ -199,6 +169,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clearMsg:
 		m.message= ""
 		m.isError= false
+		
 	case tea.WindowSizeMsg:
 		m.height= msg.Height - 4
 	
@@ -208,7 +179,6 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case editorMsg:
 		return m,fetchFile(m.path)
 
-	        // Is it a key press?
 	case tea.KeyPressMsg:
 
 		// Cool, what was the actual key pressed?
@@ -220,18 +190,18 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "g", "alt+shift+,":
-			m.gotoFile(0)
+			m.GotoFile(0)
 
 		case "G", "alt+shift+.":
-			m.gotoFile(len(m.entries)-1)
+			m.GotoFile(len(m.entries)-1)
 
 		// The "up" and "k" keys move the cursor up
 		case "up", "k", "ctrl+p":
-			m.gotoFile(m.cursor-1)
+			m.GotoFile(m.cursor-1)
 			
 		// The "down" and "j" keys move the cursor down
 		case "down", "j", "ctrl+n":
-			m.gotoFile(m.cursor+1)
+			m.GotoFile(m.cursor+1)
 			
 		// for the item that the cursor is pointing at.
 		case "space":
@@ -241,7 +211,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.selected[m.cursor] = struct{}{}
 			}
-			m.gotoFile(m.cursor+1)
+			m.GotoFile(m.cursor+1)
 
 		//press enter or l to open 
 		case "enter", "l":
@@ -252,16 +222,27 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.offset=0
 				return m, fetchFile(m.path)
 			} else {
-				return m, open(selected.path)
+				return m, Open(selected.path)
 			}
 
 		// press e to edit file in vim
 		case "e":
 			selected:= m.entries[m.cursor]
 			if selected.mode[0]=='-'{
-				return m, openEdit(selected.path)
+				return m, OpenEdit(selected.path)
 			}
 
+		case "x":
+			if len(m.selected)==0{
+				os.RemoveAll(m.entries[m.cursor].path)
+			} else{
+				for i := range m.selected{
+					os.RemoveAll(m.entries[i].path)
+				}
+				m.selected=make(map[int]struct{})
+			}
+			m.GotoFile(0)
+			return m, fetchFile(m.path)
 		//press alt+x or : to input command
 		case "alt+x", ":":
 			m.typing=true
