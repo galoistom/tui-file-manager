@@ -161,6 +161,11 @@ func (m *module) execCommand() {
 		n,err:= strconv.Atoi(insertCommand[1])
 		if err!=nil{m.message="Not numbers";m.isError=true;return}
 		m.gotoFile(m.cursor-n)
+	case "sh" :
+		command:=exec.Command("sh","-c",strings.Join(insertCommand[1:], " "))
+		if err:=command.Run();err!=nil{
+			m.message="fialed to execute";m.isError=true;return
+		}
 	default:
 		m.message= fmt.Sprintf("Unknow command: %s", insertCommand[0])
 	}
@@ -300,7 +305,7 @@ func (m module) View() tea.View {
 	}
 	footer:= dimStyle.Render("\n type \"q\" to quit")
 	if m.typing {
-		footer= inputStyle.Render("M-x: ") + m.ti.View()
+		footer= inputStyle.Render("\n M-x: ") + m.ti.View()
 	} else if m.message!=""{
 		if m.isError {
 			footer= errorStyle.Render(" ! " + m.message)
