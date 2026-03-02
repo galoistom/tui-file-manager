@@ -1,4 +1,4 @@
 ./tui-file-manager
-.*~
+./.*~
 debug.log
 ./test/*
