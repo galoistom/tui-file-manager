@@ -14,7 +14,6 @@ const (
 var (
 	temp int
 	yank []string
-	nmap= map[string]int{"f":1, "d":2, "s":3}
 )
 
 type Myerror struct{
@@ -26,6 +25,15 @@ func (err Myerror) Error() string{
 	return strings.Join([]string{err.message}, err.err.Error())
 }
 
+func HandleCreateMap (s string) int{
+	switch s{
+	case "f","enter": return 1
+	case "d": return 2
+	case "s": return 3
+	}
+	return -1
+}
+
 type mode int
 const (
 	modeNormal mode= iota
@@ -33,6 +41,7 @@ const (
 	modeCommand
 	modeCreate
 	modeTyping
+	modeDelete
 )
 
 var (
@@ -86,5 +95,4 @@ type module struct{
 
 type itemsMsg []fileitm
 type editorMsg struct{}
-type clearMsg struct{}
 

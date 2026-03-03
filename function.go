@@ -34,18 +34,6 @@ func (m *module) Open(path string) tea.Cmd{
 	}
 }
 
-// func GetPath (file fileitm) (string, error){
-// 	if file.mode[0]=='L'{
-// 		if realpath,err:=filepath.EvalSymlinks(file.path); err!=nil{
-// 			return "", Myerror{message:"fialed to eval symlink, is it broken?"}
-// 		} else{
-// 			return realpath,nil
-// 		}
-		
-// 	}
-// 	return file.path,nil
-// }
-
 func OpenEdit(path string) tea.Cmd {
 	c:= exec.Command(EDITOR, path)
 	return tea.ExecProcess(c, func(err error) tea.Msg{

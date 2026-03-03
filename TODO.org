@@ -14,15 +14,22 @@
 
 * DONE new file/folders
 
-* TODO preview file/folders
-
 * DONE terminal
-
-* TODO renaming files/folders
-
-* TODO multiple tabs
 
 * DONE search file/folders
 
+* TODO renaming files/folders
+- [ ] one by one
+- [ ] like in nnn or dired
+
+
+* TODO multiple tabs
+
 * TODO bookmark
+
+* TODO preview file/folders
+- [ ] folders
+- [ ] files (with hight light)
+- [ ] jpg/png/gif
+- [ ] pdf/xls
 

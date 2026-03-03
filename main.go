@@ -6,9 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-//	"strings"
-	"time"
-
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -29,12 +26,6 @@ func initialModel(path string) module {
 
 func (m module) Init() tea.Cmd {
 	return FetchFile(m.path)
-}
-
-func clearMessageAfter(d time.Duration) tea.Cmd {
-	return tea.Tick(d, func(t time.Time) tea.Msg {
-		return clearMsg{} 
-	})
 }
 
 func FetchFile(path string) tea.Cmd {
@@ -60,26 +51,40 @@ func FetchFile(path string) tea.Cmd {
 	}
 }
 
-func handleCreateMap (s string) int{
-	switch s{
-	case "f": return 1
-	case "d": return 2
-	case "s": return 3
-	}
-	return -1
-}
-
 func (m *module) handleCreate (msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.message=""
 	if temp==-1{
-	switch msg:= msg.(type){
-	case tea.KeyMsg:temp=handleCreateMap(msg.String())
+		switch msg:= msg.(type){
+		case tea.KeyMsg:temp=HandleCreateMap(msg.String())
 		}
 	} else {
 		return m.handleTyping(msg,func(){m.Creatf(temp)})
 	}
 	return m,nil
 }
+
+func (m *module) handleDelete (msg tea.Msg) (tea.Model, tea.Cmd){
+	m.message=""
+	m.currentMode=modeNormal
+	switch msg:=msg.(type){
+	case tea.KeyMsg:
+		switch msg.String(){
+		case "c", "enter":
+			os.RemoveAll(m.entries[m.cursor].path)
+			m.GotoFile(0)
+			return m, FetchFile(m.path)
+		case "s":
+			for i := range m.selected{
+				os.RemoveAll(m.entries[i].path)
+			}
+			m.selected=make(map[int]struct{})
+			m.GotoFile(0)
+			return m, FetchFile(m.path)
+		}
+	}
+	return m,nil
+}
+
 
 func (m *module) handleTyping (msg tea.Msg, action func()) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -94,10 +99,7 @@ func (m *module) handleTyping (msg tea.Msg, action func()) (tea.Model, tea.Cmd) 
 			m.message= "";m.isError= false
 			action()
 			m.currentMode=modeNormal;m.ti.SetValue("")
-			return m,tea.Batch(
-				FetchFile(m.path),
-				clearMessageAfter(3*time.Second),
-			)
+			return m,FetchFile(m.path)
 		default:m.ti, cmd= m.ti.Update(msg)
 		}
 	}
@@ -142,15 +144,12 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case modeSearch: return m.handleSearching(msg)
 
 	case modeCreate: return m.handleCreate(msg)
+
+	case modeDelete: return m.handleDelete(msg)
 	}
-	
 	switch msg := msg.(type) {
 	case error: fmt.Println(msg)
 
-	case clearMsg:
-		m.message= ""
-		m.isError= false
-		
 	case tea.WindowSizeMsg: m.height= msg.Height - 4
 	
 	case itemsMsg: m.entries= msg
@@ -158,6 +157,8 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case editorMsg: return m,FetchFile(m.path)
 
 	case tea.KeyPressMsg:
+		m.isError=false
+                m.message=""
 		// Cool, what was the actual key pressed?
 		switch msg.String() {
 		
@@ -220,7 +221,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "e":
 			selected:= m.entries[m.cursor]
 			switch selected.mode[0]{
-			case '-':return m, OpenEdit(selected.path)
+			case '-':return m, tea.Batch(OpenEdit(selected.path),FetchFile(m.path))
 			case 'L':
 				realpath,err:=filepath.EvalSymlinks(selected.path)
 				if  err!=nil{
@@ -233,31 +234,23 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				if !info.IsDir(){
-					return m,OpenEdit(realpath)
+					return m, tea.Batch(OpenEdit(realpath),FetchFile(m.path))
 				}
 			}
 
 		//delete files
 		case "x":
-			if len(m.selected)==0{
-				os.RemoveAll(m.entries[m.cursor].path)
-			} else{
-				for i := range m.selected{
-					os.RemoveAll(m.entries[i].path)
-				}
-				m.selected=make(map[int]struct{})
-			}
-			m.GotoFile(0)
-			return m, FetchFile(m.path)
+			m.currentMode=modeDelete
+			m.message="'c'urent/ 's'elect"
 
 		//copy and paste
-		case "y":
+		case "y","alt+w":
 			yank= []string{}
 			for i := range m.selected{
 				yank=append(yank,m.entries[i].name)
 			}
 			m.selected=make(map[int]struct{})
-		case "p":
+		case "p","ctrl+y":
 			for _,i:= range yank{
 				cmd:=exec.Command("cp", "-r", i, m.path)
 				if err:=cmd.Run();err!=nil{
@@ -292,7 +285,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			temp=m.cursor
 
 		//open shell
-		case "t": return m,OpenShell(m.path)
+		case "t": return m, tea.Batch(OpenShell(m.path), FetchFile(m.path))
 		}
 
 	}
