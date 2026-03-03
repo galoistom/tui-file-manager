@@ -44,14 +44,14 @@ func matchSimple(fileName, pattern string) bool{
 	return re.MatchString(fileName)
 }
 
-func (m *module) Search(pattern string,place int) int{
-	if m.searching==1{
+func (m *module) Search(pattern string,place int, mod bool) int{
+	if !mod{
 		for i:= place-1; i>=0; i--{
 			if matchSimple(m.entries[i].name, pattern){
 				return i
 			}
 		}
-	} else if m.searching==2{
+	} else {
 		end:=len(m.entries)
 		for i:= place+1; i<end; i++{
 			if matchSimple(m.entries[i].name, pattern){

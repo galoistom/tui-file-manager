@@ -10,7 +10,7 @@
 
 * DONE input command block
 
-* TODO copy file/folders
+* DONE copy file/folders
 
 * TODO new file/folders
 
@@ -23,4 +23,6 @@
 * TODO multiple tabs
 
 * DONE search file/folders
+
+* TODO bookmark
 
