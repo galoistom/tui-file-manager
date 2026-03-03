@@ -47,7 +47,18 @@ func (m *module) Open(path string) tea.Cmd{
 // }
 
 func OpenEdit(path string) tea.Cmd {
-	c:= exec.Command("vim", path)
+	c:= exec.Command(EDITOR, path)
+	return tea.ExecProcess(c, func(err error) tea.Msg{
+		if err!=nil{
+			return err
+		}
+		return  editorMsg{}
+	})
+}
+
+func OpenShell(path string) tea.Cmd{
+	c:= exec.Command(SHELL)
+	c.Dir=path
 	return tea.ExecProcess(c, func(err error) tea.Msg{
 		if err!=nil{
 			return err
@@ -127,3 +138,4 @@ func (m *module) Creatf(mod int) {
 		}
 	}
 }
+

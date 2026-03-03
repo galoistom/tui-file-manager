@@ -6,91 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
+//	"strings"
 	"time"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 )
-
-const GAP= 10
-var (
-	temp int
-	yank []string
-	nmap= map[string]int{"f":1, "d":2, "s":3}
-)
-
-type Myerror struct{
-	err error
-	message string
-}
-
-func (err Myerror) Error() string{
-	return strings.Join([]string{err.message}, err.err.Error())
-}
-
-type mode int
-const (
-	modeNormal mode= iota
-	modeSearch
-	modeCommand
-	modeCreate
-	modeTyping
-)
-
-var (
-    // 基础颜色和边框
-	headerStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#7D56F4")).
-		Bold(true).
-		Padding(0, 1)
-
-	selectedStyle = lipgloss.NewStyle().
-		Background(lipgloss.Color("#5A56E0")).
-		Foreground(lipgloss.Color("#FFFFFF")).
-		Bold(true)
-
-	dimStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#555555"))
-
-	// 命令输入框样式
-	inputStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FF5F87")).
-		Bold(true)
-	infoStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241")).
-		Italic(true)
-	errorStyle = lipgloss.NewStyle().
-		Background(lipgloss.Color("#FF0000")).
-		Foreground(lipgloss.Color("#FFFFFF")).
-		Bold(true).
-		Padding(0, 1)
-)
-
-type fileitm struct{
-	name string
-	path string
-	mode string
-}
-
-type module struct{
-	cursor int
-	selected map[int]struct{}
-	entries []fileitm
-	path string
-	height int
-	offset int
-	ti textinput.Model
-	searching bool
-	message string
-	isError bool
-	currentMode mode
-}
-
-type itemsMsg []fileitm
-type editorMsg struct{}
-type clearMsg struct{}
 
 func initialModel(path string) module {
 	ti:= textinput.New()
@@ -176,8 +98,7 @@ func (m *module) handleTyping (msg tea.Msg, action func()) (tea.Model, tea.Cmd) 
 				FetchFile(m.path),
 				clearMessageAfter(3*time.Second),
 			)
-		default:
-			m.ti, cmd= m.ti.Update(msg)
+		default:m.ti, cmd= m.ti.Update(msg)
 		}
 	}
 	return m,cmd
@@ -198,16 +119,16 @@ func (m *module) handleSearching(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ti.SetValue("")
 		case "ctrl+s":
 		        place:= m.Search(m.ti.Value(), m.cursor,true)
-      			        if place==-1{m.GotoFile(temp);return m,cmd}
+      		        if place==-1{m.GotoFile(temp);return m,cmd}
 		        m.GotoFile(place)	
 		case "ctrl+r":
 		        place:= m.Search(m.ti.Value(), m.cursor,false)
-					if place==-1{m.GotoFile(temp);return m,cmd}
-				m.GotoFile(place)
+			if place==-1{m.GotoFile(temp);return m,cmd}
+			m.GotoFile(place)
 		default:
 			m.ti, cmd= m.ti.Update(msg)
 			place:= m.Search(m.ti.Value(), temp,m.searching)
-				if place==-1{m.GotoFile(temp);return m,cmd}
+			if place==-1{m.GotoFile(temp);return m,cmd}
 			m.GotoFile(place)
 		}
 	}
@@ -216,51 +137,42 @@ func (m *module) handleSearching(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.currentMode{
-	case modeCommand:
-		return m.handleTyping(msg,m.ExecCommand)
-	case modeSearch:
-		return m.handleSearching(msg)
-	case modeCreate:
-		return m.handleCreate(msg)
+	case modeCommand: return m.handleTyping(msg,m.ExecCommand)
+
+	case modeSearch: return m.handleSearching(msg)
+
+	case modeCreate: return m.handleCreate(msg)
 	}
+	
 	switch msg := msg.(type) {
-	case error:
-		fmt.Println(msg)
+	case error: fmt.Println(msg)
+
 	case clearMsg:
 		m.message= ""
 		m.isError= false
 		
-	case tea.WindowSizeMsg:
-		m.height= msg.Height - 4
+	case tea.WindowSizeMsg: m.height= msg.Height - 4
 	
-	case itemsMsg:
-		m.entries= msg
+	case itemsMsg: m.entries= msg
 
-	case editorMsg:
-		return m,FetchFile(m.path)
+	case editorMsg: return m,FetchFile(m.path)
 
 	case tea.KeyPressMsg:
-
 		// Cool, what was the actual key pressed?
 		switch msg.String() {
 		
 		// These keys should exit the program.
-		case "ctrl+c", "q":
-			return m, tea.Quit
+		case "ctrl+c", "q": return m, tea.Quit
 
-		case "g", "alt+shift+,":
-			m.GotoFile(0)
+		case "g", "alt+shift+,": m.GotoFile(0)
 
-		case "G", "alt+shift+.":
-			m.GotoFile(len(m.entries)-1)
+		case "G", "alt+shift+.": m.GotoFile(len(m.entries)-1)
 
 		// The "up" and "k" keys move the cursor up
-		case "up", "k", "ctrl+p":
-			m.GotoFile(m.cursor-1)
+		case "up", "k", "ctrl+p": m.GotoFile(m.cursor-1)
 			
 		// The "down" and "j" keys move the cursor down
-		case "down", "j", "ctrl+n":
-			m.GotoFile(m.cursor+1)
+		case "down", "j", "ctrl+n": m.GotoFile(m.cursor+1)
 			
 		// for the item that the cursor is pointing at.
 		case "space":
@@ -325,8 +237,6 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-
-
 		//delete files
 		case "x":
 			if len(m.selected)==0{
@@ -339,6 +249,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.GotoFile(0)
 			return m, FetchFile(m.path)
+
 		//copy and paste
 		case "y":
 			yank= []string{}
@@ -349,7 +260,11 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "p":
 			for _,i:= range yank{
 				cmd:=exec.Command("cp", "-r", i, m.path)
-				if err:=cmd.Run();err!=nil{return m, func() tea.Msg{return Myerror{err:err, message: "failed to pase to dictionary: "}}}
+				if err:=cmd.Run();err!=nil{
+					return m, func() tea.Msg{return Myerror{
+						err:err,
+						message: "failed to pase to dictionary: ",
+					}}}
 			}
 			return m, FetchFile(m.path)
 
@@ -358,11 +273,13 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.message="'f'ile/ 'd'ictionary / 's'ymlink"
 			m.currentMode=modeCreate
 			temp=-1
+
 		//press alt+x or : to input command
 		case "alt+x", ":":
 			m.currentMode=modeCommand
 			m.ti.Focus()
 
+		//searching
 		case "ctrl+s":
 			m.currentMode=modeSearch
 			m.searching=true
@@ -373,6 +290,9 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.searching=false
 			m.ti.Focus()
 			temp=m.cursor
+
+		//open shell
+		case "t": return m,OpenShell(m.path)
 		}
 
 	}

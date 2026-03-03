@@ -16,7 +16,7 @@
 
 * TODO preview file/folders
 
-* TODO terminal
+* DONE terminal
 
 * TODO renaming files/folders
 
