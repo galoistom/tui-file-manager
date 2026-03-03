@@ -12,7 +12,7 @@
 
 * DONE copy file/folders
 
-* TODO new file/folders
+* DONE new file/folders
 
 * TODO preview file/folders
 

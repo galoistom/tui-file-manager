@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,13 +18,25 @@ const GAP= 10
 var (
 	temp int
 	yank []string
+	nmap= map[string]int{"f":1, "d":2, "s":3}
 )
+
+type Myerror struct{
+	err error
+	message string
+}
+
+func (err Myerror) Error() string{
+	return strings.Join([]string{err.message}, err.err.Error())
+}
 
 type mode int
 const (
 	modeNormal mode= iota
 	modeSearch
 	modeCommand
+	modeCreate
+	modeTyping
 )
 
 var (
@@ -95,16 +106,16 @@ func initialModel(path string) module {
 }
 
 func (m module) Init() tea.Cmd {
-	return fetchFile(m.path)
+	return FetchFile(m.path)
 }
 
 func clearMessageAfter(d time.Duration) tea.Cmd {
-    return tea.Tick(d, func(t time.Time) tea.Msg {
-        return clearMsg{} 
-    })
+	return tea.Tick(d, func(t time.Time) tea.Msg {
+		return clearMsg{} 
+	})
 }
 
-func fetchFile(path string) tea.Cmd {
+func FetchFile(path string) tea.Cmd {
 	return func() tea.Msg {
 		ent, err:= os.ReadDir(path)
 		if err!=nil{
@@ -127,33 +138,28 @@ func fetchFile(path string) tea.Cmd {
 	}
 }
 
-func (m *module) execCommand() {
-	insertCommand:= strings.Fields(m.ti.Value())
-	switch insertCommand[0] {
-	case "goto" :
-		n,err:= strconv.Atoi(insertCommand[1])
-		if err!=nil{m.message="Not numbers";m.isError=true;return}
-		m.GotoFile(n)
-	case "down" :
-		n,err:= strconv.Atoi(insertCommand[1])
-		if err!=nil{m.message="Not numbers";m.isError=true;return}
-		m.GotoFile(n+m.cursor)
-	case "up" :
-		n,err:= strconv.Atoi(insertCommand[1])
-		if err!=nil{m.message="Not numbers";m.isError=true;return}
-		m.GotoFile(m.cursor-n)
-	case "sh" :
-		command:=exec.Command("sh","-c",strings.Join(insertCommand[1:], " "))
-		command.Dir= m.path
-		if err:=command.Run();err!=nil{
-			m.message="fialed to execute";m.isError=true;return
-		}
-	default:
-		m.message= fmt.Sprintf("Unknow command: %s", insertCommand[0])
+func handleCreateMap (s string) int{
+	switch s{
+	case "f": return 1
+	case "d": return 2
+	case "s": return 3
 	}
+	return -1
 }
 
-func (m module) handleTyping (msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *module) handleCreate (msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.message=""
+	if temp==-1{
+	switch msg:= msg.(type){
+	case tea.KeyMsg:temp=handleCreateMap(msg.String())
+		}
+	} else {
+		return m.handleTyping(msg,func(){m.Creatf(temp)})
+	}
+	return m,nil
+}
+
+func (m *module) handleTyping (msg tea.Msg, action func()) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg:= msg.(type) {
 	case tea.KeyMsg:
@@ -164,10 +170,10 @@ func (m module) handleTyping (msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m,nil
 		case "enter":
 			m.message= "";m.isError= false
-			m.execCommand()
+			action()
 			m.currentMode=modeNormal;m.ti.SetValue("")
 			return m,tea.Batch(
-				fetchFile(m.path),
+				FetchFile(m.path),
 				clearMessageAfter(3*time.Second),
 			)
 		default:
@@ -177,7 +183,7 @@ func (m module) handleTyping (msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m,cmd
 }
 
-func (m module) handleSearching(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *module) handleSearching(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg:= msg.(type) {
 	case tea.KeyMsg:
@@ -196,12 +202,12 @@ func (m module) handleSearching(msg tea.Msg) (tea.Model, tea.Cmd) {
 		        m.GotoFile(place)	
 		case "ctrl+r":
 		        place:= m.Search(m.ti.Value(), m.cursor,false)
-      			        if place==-1{m.GotoFile(temp);return m,cmd}
-		        m.GotoFile(place)
+					if place==-1{m.GotoFile(temp);return m,cmd}
+				m.GotoFile(place)
 		default:
 			m.ti, cmd= m.ti.Update(msg)
 			place:= m.Search(m.ti.Value(), temp,m.searching)
-		        if place==-1{m.GotoFile(temp);return m,cmd}
+				if place==-1{m.GotoFile(temp);return m,cmd}
 			m.GotoFile(place)
 		}
 	}
@@ -211,11 +217,15 @@ func (m module) handleSearching(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.currentMode{
 	case modeCommand:
-		return m.handleTyping(msg)
+		return m.handleTyping(msg,m.ExecCommand)
 	case modeSearch:
 		return m.handleSearching(msg)
+	case modeCreate:
+		return m.handleCreate(msg)
 	}
 	switch msg := msg.(type) {
+	case error:
+		fmt.Println(msg)
 	case clearMsg:
 		m.message= ""
 		m.isError= false
@@ -227,7 +237,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.entries= msg
 
 	case editorMsg:
-		return m,fetchFile(m.path)
+		return m,FetchFile(m.path)
 
 	case tea.KeyPressMsg:
 
@@ -265,21 +275,58 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//press enter or l to open 
 		case "enter", "l":
 			selected:= m.entries[m.cursor]
-			if selected.mode[0]!='-' {
+			switch selected.mode[0]{
+			case 'd':
 				m.path= selected.path
 				m.cursor=0
 				m.offset=0
-				return m, fetchFile(m.path)
-			} else {
-				return m, Open(selected.path)
+				return m, FetchFile(m.path)
+			case 'L':
+				realpath,err:=filepath.EvalSymlinks(selected.path)
+				if  err!=nil{
+					m.message="broken link";m.isError=true
+					return m, nil
+				}
+				info,err:=os.Stat(realpath)
+				if err!=nil{
+					m.message="targer not exists";m.isError=true
+					return m, nil
+				}
+				if info.IsDir(){
+					m.path=realpath
+					m.cursor=0
+					return m,FetchFile(m.path)
+				} else {
+					return m,m.Open(realpath)
+				}
+
+			default:
+				return m, m.Open(selected.path)
 			}
 
 		// press e to edit file in vim
 		case "e":
 			selected:= m.entries[m.cursor]
-			if selected.mode[0]=='-'{
-				return m, OpenEdit(selected.path)
+			switch selected.mode[0]{
+			case '-':return m, OpenEdit(selected.path)
+			case 'L':
+				realpath,err:=filepath.EvalSymlinks(selected.path)
+				if  err!=nil{
+					m.message="broken link";m.isError=true
+					return m, nil
+				}
+				info,err:=os.Stat(realpath)
+				if err!=nil{
+					m.message="targer not exists";m.isError=true
+					return m, nil
+				}
+				if !info.IsDir(){
+					return m,OpenEdit(realpath)
+				}
 			}
+
+
+
 		//delete files
 		case "x":
 			if len(m.selected)==0{
@@ -291,7 +338,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.selected=make(map[int]struct{})
 			}
 			m.GotoFile(0)
-			return m, fetchFile(m.path)
+			return m, FetchFile(m.path)
 		//copy and paste
 		case "y":
 			yank= []string{}
@@ -302,9 +349,15 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "p":
 			for _,i:= range yank{
 				cmd:=exec.Command("cp", "-r", i, m.path)
-				if err:=cmd.Run();err!=nil{fmt.Println("fialed to pase", err)}
+				if err:=cmd.Run();err!=nil{return m, func() tea.Msg{return Myerror{err:err, message: "failed to pase to dictionary: "}}}
 			}
-			return m, fetchFile(m.path)
+			return m, FetchFile(m.path)
+
+		//create new file
+		case "n":
+			m.message="'f'ile/ 'd'ictionary / 's'ymlink"
+			m.currentMode=modeCreate
+			temp=-1
 		//press alt+x or : to input command
 		case "alt+x", ":":
 			m.currentMode=modeCommand
@@ -326,7 +379,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
         // Return the updated model to the Bubble Tea runtime for processing.
         // Note that we're not returning a command.
-        return m, nil
+		return m, nil
 }
 
 func (m module) View() tea.View {
@@ -364,10 +417,12 @@ func (m module) View() tea.View {
 		footer= inputStyle.Render("\n M-x: ") + m.ti.View()
 	case modeSearch:
 		if m.searching{
-			footer= inputStyle.Render("\n C-s: ") + m.ti.View()			
+			footer= inputStyle.Render("\n C-s: ") + m.ti.View()
 		} else {
 			footer= inputStyle.Render("\n C-r: ") + m.ti.View()
 		}
+	case modeCreate:
+		footer= inputStyle.Render("\n name: ") + m.ti.View()
 	}
 	if m.message!=""{
 		if m.isError {
