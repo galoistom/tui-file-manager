@@ -1,10 +1,13 @@
-
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
 	"strings"
+
 	"charm.land/bubbles/v2/textinput"
-	"charm.land/lipgloss/v2"	
+	"charm.land/lipgloss/v2"
 )
 
 
@@ -45,6 +48,8 @@ const (
 	modeTyping
 	modeDelete
 	modeRename
+	modeBookmark
+	modeRenameSingle
 )
 
 var (
@@ -99,3 +104,37 @@ type module struct{
 
 type itemsMsg []fileitm
 type editorMsg struct{}
+
+type Config struct{
+	Bookmark map[string]string `json:"bookmark"`
+}
+
+var Configs  Config
+
+func init() {
+	file:="config.json"
+	_,err:= os.Stat(file)
+	if err!=nil {
+		if  !os.IsNotExist(err){
+			fmt.Println("failed to get config status: ", err)
+                        os.Exit(3)
+		} else {
+			data, err:= json.MarshalIndent(Configs, "", "    ")
+			if err!= nil{
+				fmt.Println("failed to write config: ", err)
+				os.Exit(3)
+			}
+			os.WriteFile(file,data, 0644)
+		}
+	}
+	fileContent, err:= os.ReadFile(file)
+	if err!=nil{
+		fmt.Println("Error occoured when reading: %v", err)
+		os.Exit(1)
+	}
+	err= json.Unmarshal(fileContent, &Configs)
+	if err!=nil{
+		fmt.Println("Error unamarshalling JSON: %v", err)
+		os.Exit(3)
+	}
+}

@@ -15,8 +15,6 @@ import (
 
 func initialModel(path string) module {
 	ti:= textinput.New()
-	ti.Placeholder= "input command"
-	ti.Prompt=""
 	ti.Focus()
 	return module{
 		ti: ti,
@@ -139,6 +137,23 @@ func (m *module) handleSearching(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m,cmd
 }
 
+func (m *module) handleBookmark (msg tea.Msg) (tea.Model, tea.Cmd) {
+	m.currentMode=modeNormal
+	switch msg:=msg.(type){
+	case tea.KeyMsg:
+		path:=Configs.Bookmark[msg.String()]
+		if path!=""{
+			m.path=path
+			return m, FetchFile(m.path)
+		}
+	}
+	return m,nil
+}
+
+func (m *module) handleRenameSingle (msg tea.Msg) (tea.Model, tea.Cmd){
+	return m.handleTyping(msg,func(){m.Rename(m.entries[m.cursor].path,m.ti.Value())})
+}
+
 func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.currentMode{
 	case modeCommand: return m.handleTyping(msg,m.ExecCommand)
@@ -148,6 +163,10 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case modeCreate: return m.handleCreate(msg)
 
 	case modeDelete: return m.handleDelete(msg)
+
+	case modeBookmark: return m.handleBookmark(msg)
+
+	case modeRenameSingle: return m.handleRenameSingle(msg)
 
 	case modeRename:
 		m.RenameUpdate()
@@ -264,6 +283,9 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			f.Close()
 			m.currentMode=modeRename
 			return m,OpenShell(m.path, EDITOR+" "+m.tempFile)
+		case "r":
+			m.currentMode=modeRenameSingle
+			m.ti.SetValue(m.entries[m.cursor].path)
 
 		//delete files
 		case "x":
@@ -306,13 +328,22 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ti.Focus()
 			temp=m.cursor
 		case "ctrl+r":
-			m.currentMode=modeSearch			
+			m.currentMode=modeSearch	
 			m.searching=false
 			m.ti.Focus()
 			temp=m.cursor
 
 		//open shell
 		case "t": return m, tea.Batch(OpenShell(m.path, SHELL), FetchFile(m.path))
+
+		//book mark
+		case "b":
+			m.currentMode=modeBookmark
+		        var s strings.Builder
+			for i:= range Configs.Bookmark{
+				s.WriteString(" "+i)
+			}
+			m.message=s.String()
 		}
 
 	}
@@ -363,6 +394,8 @@ func (m module) View() tea.View {
 		}
 	case modeCreate:
 		footer= inputStyle.Render("\n name: ") + m.ti.View()
+	case modeRenameSingle:
+		footer= inputStyle.Render("\n Newname: ") + m.ti.View()
 	}
 	if m.message!=""{
 		if m.isError {

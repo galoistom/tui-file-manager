@@ -64,23 +64,30 @@ func (m *module) RenameUpdate() {
 		if len(l)>2{
 			current,err:=strconv.Atoi(l[0])
 			if err!= nil{
-				m.message="number convertion fialed: "+err.Error();m.isError=true
+				m.message="number convertion fialed: "+err.Error()
+                                m.isError=true
 				os.Remove(m.tempFile)
 				continue
 			}
 			oldName:= m.entries[current].path
 			newName:= filepath.Join(m.path, strings.Join(l[2:], " "))
-			if oldName == newName{continue}
-			if _,err:= os.Stat(newName); err==nil{newName+="_"+string(rand.Intn(100))}
-			if err=os.Rename(oldName, newName);err!=nil{
-				m.message="fialed to rename: "+err.Error();m.isError=true
-				os.Remove(m.tempFile)
-				return
-			}
+			m.Rename(oldName,newName)
+			os.Remove(m.tempFile)
 		}
 	}
 	m.message="completes"
 	os.Remove(m.tempFile)
+}
+
+func (m *module) Rename(oldName,newName string) {
+	if oldName == newName{return}
+	if _,err:= os.Stat(newName); err==nil{
+		newName+="_"+strconv.Itoa(rand.Intn(100))
+	}
+	if err:=os.Rename(oldName, newName);err!=nil{
+		m.message="fialed to rename: "+err.Error();m.isError=true
+		return
+	}
 }
 
 func (m *module) Search(pattern string,place int, mod bool) int{

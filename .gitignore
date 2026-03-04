@@ -1,5 +1,5 @@
-./tui-file-manager
-./.*~
+tui-file-manager
+*~
 debug.log
-./test/*
-./build.sh
+test/*
+build.sh

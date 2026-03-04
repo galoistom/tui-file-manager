@@ -18,13 +18,13 @@
 
 * DONE search file/folders
 
-* TODO renaming files/folders
-- [ ] one by one
-- [ ] like in nnn or dired
+* DONE renaming files/folders
+- [X] one by one
+- [X] like in nnn or dired
 
 * TODO multiple tabs
 
-* TODO bookmark
+* DONE bookmark
 
 * TODO preview file/folders
 - [ ] folders
