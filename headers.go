@@ -10,12 +10,6 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-
-const (
-	GAP= 10
-	EDITOR="vim"
-	SHELL="zsh"
-)
 var (
 	temp int
 	yank []string
@@ -107,6 +101,9 @@ type editorMsg struct{}
 
 type Config struct{
 	Bookmark map[string]string `json:"bookmark"`
+	SHELL string `json:"shell"`
+	EDITOR string `json:"editor"`
+	GAP int `json:"gap"`
 }
 
 var Configs  Config
@@ -129,12 +126,12 @@ func init() {
 	}
 	fileContent, err:= os.ReadFile(file)
 	if err!=nil{
-		fmt.Println("Error occoured when reading: %v", err)
+		fmt.Println("Error occoured when reading: ", err)
 		os.Exit(1)
 	}
 	err= json.Unmarshal(fileContent, &Configs)
 	if err!=nil{
-		fmt.Println("Error unamarshalling JSON: %v", err)
+		fmt.Println("Error unamarshalling JSON: ", err)
 		os.Exit(3)
 	}
 }

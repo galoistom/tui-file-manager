@@ -247,7 +247,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "e":
 			selected:= m.entries[m.cursor]
 			switch selected.mode[0]{
-			case '-':return m, tea.Batch(OpenShell(m.path,EDITOR+" "+selected.path),FetchFile(m.path))
+			case '-':return m, tea.Batch(OpenShell(m.path,Configs.EDITOR+" "+selected.path),FetchFile(m.path))
 			case 'L':
 				realpath,err:=filepath.EvalSymlinks(selected.path)
 				if  err!=nil{
@@ -260,7 +260,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				if !info.IsDir(){
-					return m, tea.Batch(OpenShell(m.path,EDITOR+" "+realpath),FetchFile(m.path))
+					return m, tea.Batch(OpenShell(m.path,Configs.EDITOR+" "+realpath),FetchFile(m.path))
 				}
 			}
 
@@ -282,7 +282,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.tempFile=f.Name()
 			f.Close()
 			m.currentMode=modeRename
-			return m,OpenShell(m.path, EDITOR+" "+m.tempFile)
+			return m,OpenShell(m.path, Configs.EDITOR+" "+m.tempFile)
 		case "r":
 			m.currentMode=modeRenameSingle
 			m.ti.SetValue(m.entries[m.cursor].path)
@@ -334,7 +334,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			temp=m.cursor
 
 		//open shell
-		case "t": return m, tea.Batch(OpenShell(m.path, SHELL), FetchFile(m.path))
+		case "t": return m, tea.Batch(OpenShell(m.path, Configs.SHELL), FetchFile(m.path))
 
 		//book mark
 		case "b":

@@ -3,5 +3,8 @@
 	"b":"/home/galoistom/math-note/notes/Books/",
 	"w":"/home/galoistom/web_for_server/",
 	"h":"/home/galoistom/"
-    }
+    },
+    "gap": 10,
+    "editor": "nvim",
+    "shell": "zsh"
 }
