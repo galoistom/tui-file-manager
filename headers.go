@@ -1,10 +1,12 @@
+
 package main
 
 import (
 	"strings"
 	"charm.land/bubbles/v2/textinput"
-	"charm.land/lipgloss/v2"
+	"charm.land/lipgloss/v2"	
 )
+
 
 const (
 	GAP= 10
@@ -42,6 +44,7 @@ const (
 	modeCreate
 	modeTyping
 	modeDelete
+	modeRename
 )
 
 var (
@@ -91,8 +94,8 @@ type module struct{
 	message string
 	isError bool
 	currentMode mode
+	tempFile string
 }
 
 type itemsMsg []fileitm
 type editorMsg struct{}
-

@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -146,6 +148,11 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case modeCreate: return m.handleCreate(msg)
 
 	case modeDelete: return m.handleDelete(msg)
+
+	case modeRename:
+		m.RenameUpdate()
+		m.currentMode=modeNormal
+		return m,FetchFile(m.path)
 	}
 	switch msg := msg.(type) {
 	case error: fmt.Println(msg)
@@ -221,7 +228,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "e":
 			selected:= m.entries[m.cursor]
 			switch selected.mode[0]{
-			case '-':return m, tea.Batch(OpenEdit(selected.path),FetchFile(m.path))
+			case '-':return m, tea.Batch(OpenShell(m.path,EDITOR+" "+selected.path),FetchFile(m.path))
 			case 'L':
 				realpath,err:=filepath.EvalSymlinks(selected.path)
 				if  err!=nil{
@@ -234,9 +241,29 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				if !info.IsDir(){
-					return m, tea.Batch(OpenEdit(realpath),FetchFile(m.path))
+					return m, tea.Batch(OpenShell(m.path,EDITOR+" "+realpath),FetchFile(m.path))
 				}
 			}
+
+		//rename file
+		case "R":
+			f,err:= os.CreateTemp("", "tui-file-manager-*")
+			if err!=nil{
+				m.message="fialed to creat temp file when renaming: "+err.Error();m.isError=true
+				return m,nil
+			}
+			var index strings.Builder
+			for i,ent:= range m.entries{
+				fmt.Fprintf(&index,"%d %s %s\n", i, ent.mode, ent.name)
+			}
+			if _,err= f.WriteString(index.String()); err!=nil{
+				m.message="fialed to write into temp file when renaming: "+ err.Error();m.isError=true
+				return m, nil
+			}
+			m.tempFile=f.Name()
+			f.Close()
+			m.currentMode=modeRename
+			return m,OpenShell(m.path, EDITOR+" "+m.tempFile)
 
 		//delete files
 		case "x":
@@ -285,7 +312,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			temp=m.cursor
 
 		//open shell
-		case "t": return m, tea.Batch(OpenShell(m.path), FetchFile(m.path))
+		case "t": return m, tea.Batch(OpenShell(m.path, SHELL), FetchFile(m.path))
 		}
 
 	}

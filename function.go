@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math/rand"
 	"fmt"
 	"os"
 	"os/exec"
@@ -34,18 +35,8 @@ func (m *module) Open(path string) tea.Cmd{
 	}
 }
 
-func OpenEdit(path string) tea.Cmd {
-	c:= exec.Command(EDITOR, path)
-	return tea.ExecProcess(c, func(err error) tea.Msg{
-		if err!=nil{
-			return err
-		}
-		return  editorMsg{}
-	})
-}
-
-func OpenShell(path string) tea.Cmd{
-	c:= exec.Command(SHELL)
+func OpenShell(path string, command string) tea.Cmd{
+	c:= exec.Command("sh", "-c", command)
 	c.Dir=path
 	return tea.ExecProcess(c, func(err error) tea.Msg{
 		if err!=nil{
@@ -59,6 +50,37 @@ func matchSimple(fileName, pattern string) bool{
 	re, err:= regexp.Compile("(?i)"+ pattern)
 	if err!=nil{return false}
 	return re.MatchString(fileName)
+}
+
+func (m *module) RenameUpdate() {
+	context,err:=os.ReadFile(m.tempFile)
+	if err!=nil{
+		m.message="failed to update renaming: "+ err.Error(); m.isError=true
+		return
+	}
+	lines:=strings.Lines(string(context))
+	for line:=range lines{
+		l:=strings.Fields(line)
+		if len(l)>2{
+			current,err:=strconv.Atoi(l[0])
+			if err!= nil{
+				m.message="number convertion fialed: "+err.Error();m.isError=true
+				os.Remove(m.tempFile)
+				continue
+			}
+			oldName:= m.entries[current].path
+			newName:= filepath.Join(m.path, strings.Join(l[2:], " "))
+			if oldName == newName{continue}
+			if _,err:= os.Stat(newName); err==nil{newName+="_"+string(rand.Intn(100))}
+			if err=os.Rename(oldName, newName);err!=nil{
+				m.message="fialed to rename: "+err.Error();m.isError=true
+				os.Remove(m.tempFile)
+				return
+			}
+		}
+	}
+	m.message="completes"
+	os.Remove(m.tempFile)
 }
 
 func (m *module) Search(pattern string,place int, mod bool) int{

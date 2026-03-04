@@ -22,7 +22,6 @@
 - [ ] one by one
 - [ ] like in nnn or dired
 
-
 * TODO multiple tabs
 
 * TODO bookmark
