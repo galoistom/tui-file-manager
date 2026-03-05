@@ -168,6 +168,8 @@ func (m *module) ExecCommand() {
 			}
 			if f.IsDir() {
 				m.path = path
+				m.cursor = 0
+				m.offset = 0
 			}
 		} else {
 			m.message = "format incorrect"
