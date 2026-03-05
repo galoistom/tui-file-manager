@@ -15,6 +15,16 @@ var (
 	temp  int
 	yank  []string
 	cache = filepath.Join(os.TempDir(), "tui-fm")
+	needProcess = map[string]struct{}{
+		".pdf":  {},
+		".mp4":  {},
+		".mkv":  {},
+		".docx": {},
+		".xlsx": {},
+		".jpg":  {},
+		".png":  {},
+		".gif":  {},
+	}
 )
 
 type Myerror struct {
@@ -145,6 +155,7 @@ func init() {
 	err = json.Unmarshal(fileContent, &Configs)
 	if err != nil {
 		fmt.Println("Error unamarshalling JSON: ", err)
-		os.Exit(3)
+		os.Exit(1)
 	}
+	os.Mkdir(cache,0750)
 }

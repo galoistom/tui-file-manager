@@ -284,7 +284,28 @@ func (m module) Preview(width int, height int) string {
 		return style.Render(string(out))
 	}
 	if f.Mode().String()[0] == '-' {
-		path := m.entries[m.cursor].path
+		theFile:=m.entries[m.cursor]
+		ext:=filepath.Ext(theFile.name)
+		if _,ok:=needProcess[ext];ok{
+			path,err:= convertJPG(theFile.path,ext)
+			if err!=nil{
+				return style.Render("failed to convert: "+ err.Error())
+			}
+//			path:=theFile.path
+			cmd := exec.Command(
+				"chafa",
+				"-f","symbols",
+				"--size", fmt.Sprintf("%dx%d", width-3, height),
+				"--symbols", "block",
+				path,
+			)
+			out,err:=cmd.Output()
+			if err!=nil{
+				return style.Render("failed to show: "+ err.Error())
+			}
+			return style.Render(string(out))
+		}
+		path := theFile.path
 		index := exec.Command("cat", "-n", path)
 		restrict := exec.Command("head", "-n", strconv.Itoa(height-5))
 		pipe, err := index.StdoutPipe()
@@ -331,28 +352,40 @@ func highlightCode(path string, content string) string {
 }
 
 func getCacheName(path string) string {
-	hash := fmt.Sprintf("%x.jpg", md5.Sum([]byte(path)))
+	hash := fmt.Sprintf("%x", md5.Sum([]byte(path)))
 	return filepath.Join(cache, hash)
 }
 
 func convertJPG(path string, t string) (string, error) {
-	cachePath := getCacheName(path)
-	if _, err := os.Stat(path); err == nil {
+	cachePath := getCacheName(path) + ".jpg"
+	if _, err := os.Stat(cachePath); err == nil {
 		return t, nil
 	}
 	var cmd exec.Cmd
 	switch t {
-	case "pdf":
-		cmd = *exec.Command("pdftoppm", "-jpeg", "-f", "1", "-singlefile", path, cachePath, ".jpg")
-	case "doc", "xls":
-		cmd = *exec.Command("libreoffice", "--convert-to", "jpg", path, "--outdir", cachePath)
-	case "mp4", "mkv":
+	case ".pdf":
+		cmd = *exec.Command("pdftoppm", "-jpeg", "-f", "1", "-singlefile", path, getCacheName(path))
+	case ".doc", ".xls", ".docx", ".xlsx":
+		cmd = *exec.Command("libreoffice", "--convert-to", "jpg", path, "--outdir", filepath.Dir(cachePath))
+		if err := cmd.Run(); err != nil {
+			return "", err
+		}
+		baseName := filepath.Base(path)
+		ext := filepath.Ext(baseName)
+		defaultOutputName := strings.TrimSuffix(baseName, ext) + ".jpg"
+		defaultOutputPath := filepath.Join(cache, defaultOutputName)
+
+		err := os.Rename(defaultOutputPath, cachePath)
+		if err != nil {
+			return "", fmt.Errorf("rename failed: %v", err)
+		}
+	case ".mp4", ".mkv", ".mov":
 		cmd = *exec.Command("ffmpegthumbnailer", "-i", path, "-o", cachePath, "-s", "0")
 	default:
 		return path, nil
 	}
 	if err := cmd.Run(); err != nil {
-		return "", err
+		return "", Myerror{message:getCacheName(path),err:err}
 	}
 	return cachePath, nil
 }
