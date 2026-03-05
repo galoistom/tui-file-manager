@@ -43,7 +43,6 @@ const (
 	modeDelete
 	modeRename
 	modeBookmark
-	modeRenameSingle
 )
 
 var (
@@ -87,6 +86,7 @@ type module struct{
 	entries []fileitm
 	path string
 	height int
+	width int
 	offset int
 	ti textinput.Model
 	searching bool
@@ -94,6 +94,7 @@ type module struct{
 	isError bool
 	currentMode mode
 	tempFile string
+	previe bool
 }
 
 type itemsMsg []fileitm

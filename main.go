@@ -120,8 +120,8 @@ func (m *module) handleSearching(msg tea.Msg) (tea.Model, tea.Cmd) {
 			temp=m.cursor
 			m.ti.SetValue("")
 		case "ctrl+s":
-		        place:= m.Search(m.ti.Value(), m.cursor,true)
-      		        if place==-1{m.GotoFile(temp);return m,cmd}
+				place:= m.Search(m.ti.Value(), m.cursor,true)
+					if place==-1{m.GotoFile(temp);return m,cmd}
 		        m.GotoFile(place)	
 		case "ctrl+r":
 		        place:= m.Search(m.ti.Value(), m.cursor,false)
@@ -150,10 +150,6 @@ func (m *module) handleBookmark (msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m,nil
 }
 
-func (m *module) handleRenameSingle (msg tea.Msg) (tea.Model, tea.Cmd){
-	return m.handleTyping(msg,func(){m.Rename(m.entries[m.cursor].path,m.ti.Value())})
-}
-
 func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.currentMode{
 	case modeCommand: return m.handleTyping(msg,m.ExecCommand)
@@ -166,8 +162,6 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case modeBookmark: return m.handleBookmark(msg)
 
-	case modeRenameSingle: return m.handleRenameSingle(msg)
-
 	case modeRename:
 		m.RenameUpdate()
 		m.currentMode=modeNormal
@@ -176,7 +170,9 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case error: fmt.Println(msg)
 
-	case tea.WindowSizeMsg: m.height= msg.Height - 4
+	case tea.WindowSizeMsg:
+		m.height= msg.Height - 3
+		m.width= msg.Width - 3
 	
 	case itemsMsg: m.entries= msg
 
@@ -284,8 +280,8 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentMode=modeRename
 			return m,OpenShell(m.path, Configs.EDITOR+" "+m.tempFile)
 		case "r":
-			m.currentMode=modeRenameSingle
-			m.ti.SetValue(m.entries[m.cursor].path)
+			m.currentMode=modeCommand
+			m.ti.SetValue("rename "+m.entries[m.cursor].path)
 
 		//delete files
 		case "x":
@@ -309,12 +305,19 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}}}
 			}
 			return m, FetchFile(m.path)
+		case "c","alt+y":
+			m.ti.SetValue("copyto ")
+			m.currentMode=modeCommand
 
 		//create new file
 		case "n":
 			m.message="'f'ile/ 'd'ictionary / 's'ymlink"
 			m.currentMode=modeCreate
 			temp=-1
+
+		//previe
+		case "v":
+			m.previe=!m.previe
 
 		//press alt+x or : to input command
 		case "alt+x", ":":
@@ -379,23 +382,21 @@ func (m module) View() tea.View {
 			rows= append(rows, lineContent)
 		}
 	}
-	for len(rows)< m.height-1 {
+	for len(rows)< m.height-5 {
 		rows= append(rows,"")
 	}
 	footer:= dimStyle.Render("\n type \"q\" to quit")
 	switch m.currentMode{
 	case modeCommand:
-		footer= inputStyle.Render("\n M-x: ") + m.ti.View()
+		footer= inputStyle.Render("\n M-x ") + m.ti.View()
 	case modeSearch:
 		if m.searching{
-			footer= inputStyle.Render("\n C-s: ") + m.ti.View()
+			footer= inputStyle.Render("\n C-s ") + m.ti.View()
 		} else {
-			footer= inputStyle.Render("\n C-r: ") + m.ti.View()
+			footer= inputStyle.Render("\n C-r ") + m.ti.View()
 		}
 	case modeCreate:
 		footer= inputStyle.Render("\n name: ") + m.ti.View()
-	case modeRenameSingle:
-		footer= inputStyle.Render("\n Newname: ") + m.ti.View()
 	}
 	if m.message!=""{
 		if m.isError {
@@ -405,9 +406,44 @@ func (m module) View() tea.View {
 		}
 	}
 	rows= append(rows, footer)
+	
+	if m.previe{
+		indexSize := int(float64(m.width) * 0.45)
+		preSize := m.width - indexSize - 2
+		prev:=m.Preview(preSize, m.height)
+		style := lipgloss.NewStyle().
+			Width(indexSize).
+			Height(m.height-1).
+			MaxWidth(indexSize).
+			MaxHeight(m.height-1).
+			Padding(0).
+			BorderStyle(lipgloss.HiddenBorder())
+		filesView:= style.Render(
+			lipgloss.JoinVertical(
+				lipgloss.Left,rows...,
+			),
+		)
+		return tea.View{
+			Content:lipgloss.JoinHorizontal(
+				lipgloss.Top,
+				filesView,
+				prev,
+			),
+			AltScreen:true,
+		}
+	}
+
 	// Send the UI for rendering
 	return tea.View{
-		Content: lipgloss.JoinVertical(lipgloss.Left, rows... ),
+		Content: lipgloss.NewStyle().
+		Width(m.width).Height(m.height-1).
+		MaxWidth(m.width).MaxHeight(m.height-1).
+		Padding(0).
+			BorderStyle(lipgloss.HiddenBorder()).
+			Render(lipgloss.JoinVertical(
+					lipgloss.Left,
+					rows...
+				)),
 		AltScreen: true,
 	}
 }
@@ -433,3 +469,4 @@ func main() {
                 os.Exit(1)
 	}
 }
+

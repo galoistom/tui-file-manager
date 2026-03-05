@@ -9,8 +9,12 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
+	"bytes"
+	"charm.land/lipgloss/v2"
 	tea "charm.land/bubbletea/v2"
+	"github.com/alecthomas/chroma/v2/formatters"
+	"github.com/alecthomas/chroma/v2/lexers"
+	"github.com/alecthomas/chroma/v2/styles"
 )
 
 func (m *module) GotoFile(n int) {
@@ -111,7 +115,7 @@ func (m *module) Search(pattern string,place int, mod bool) int{
 func (m *module) ExecCommand() {
 	insertCommand:= strings.Fields(m.ti.Value())
 	switch insertCommand[0] {
-	case "goto" :
+	case "go" :
 		n,err:= strconv.Atoi(insertCommand[1])
 		if err!=nil{m.message="Not numbers";m.isError=true;return}
 		m.GotoFile(n)
@@ -124,14 +128,67 @@ func (m *module) ExecCommand() {
 		if err!=nil{m.message="Not numbers";m.isError=true;return}
 		m.GotoFile(m.cursor-n)
 	case "sh" :
-		command:=exec.Command("sh","-c",strings.Join(insertCommand[1:], " "))
+		command:=exec.Command(Configs.SHELL,"-c",strings.Join(insertCommand[1:], " "))
 		command.Dir= m.path
 		if err:=command.Run();err!=nil{
-			m.message="fialed to execute";m.isError=true;return
+			m.message="fialed to execute: "+ err.Error()
+			m.isError=true;return
+
 		}
-	default:
-		m.message= fmt.Sprintf("Unknow command: %s", insertCommand[0])
+	case "goto" :
+		if len(insertCommand)==2{
+			path:=expandPath(insertCommand[1])
+			f,err:=os.Stat(path)
+			if err!=nil{
+				m.message="not a correct path:"+ err.Error()
+				m.isError=true
+				return
+			}
+			if f.IsDir(){m.path=path}
+		} else{m.message="format incorrect"}
+	case "rename":
+		if len(insertCommand)==2{
+			m.Rename(m.entries[m.cursor].path, insertCommand[1])
+		} else{m.message="format incorrect"}			
+	case "copyto":
+		if len(insertCommand)==2{
+			path:=expandPath(insertCommand[1])
+			f,err:=os.Stat(path)
+			if err!=nil{
+				m.message="not a correct path:"+ err.Error()
+				m.isError=true
+				return
+			}
+			if !f.IsDir(){return}
+			if len(m.selected)==0{
+				cmd:=exec.Command("cp", "-r",m.entries[m.cursor].path,path)
+				if err=cmd.Run();err!=nil{
+					m.message="failed to pase: "+err.Error()
+					m.isError=true;return
+				}
+			} else{
+				for i:= range m.selected{
+					cmd:=exec.Command("cp", "-r",m.entries[i].path,path)
+  				        if err=cmd.Run();err!=nil{
+						m.message="failed to pase: "+err.Error()
+ 					        m.isError=true;
+					}					
+				}
+			}
+		} else{m.message="format incorrect"}
+	default: m.message= fmt.Sprintf("Unknow command: %s", insertCommand[0])
 	}
+}
+
+func expandPath(path string) string {
+    if len(path) == 0 || path[0] != '~' {return path}
+    home, err := os.UserHomeDir()
+    if err != nil {return path}
+    if path == "~" {return home}
+    if path[1] == '/' || path[1] == '\\' {
+	    return filepath.Join(home, path[1:])
+    }
+    return path
 }
 
 func (m *module) Creatf(mod int) {
@@ -156,3 +213,60 @@ func (m *module) Creatf(mod int) {
 	}
 }
 
+func (m module) Preview(width int, height int) string {
+	style := lipgloss.NewStyle().
+        Width(width).
+        Height(height).
+        MaxWidth(width).
+        MaxHeight(height).
+        Padding(1).
+        Border(lipgloss.NormalBorder(),false,false,false,true)
+	if m.cursor==0{return style.Render("up a dictionary")}
+	f, err:= os.Stat(m.entries[m.cursor].path)
+	if err!=nil{return "failed to preview: "+err.Error()}
+	if f.IsDir(){
+		out, err:= exec.Command("tree", "-L",
+			"3", m.entries[m.cursor].path).Output()
+		if err!=nil{return "failed to review tree: "+err.Error()}
+		return style.Render(string(out))
+	}
+	if f.Mode().String()[0]=='-'{
+		path:=m.entries[m.cursor].path
+		index:= exec.Command("cat", "-n", path)
+		restrict:= exec.Command("head", "-n", strconv.Itoa(height-5))
+		pipe,err:= index.StdoutPipe()
+		if err!=nil{return "failed to pipe: "+err.Error()}
+		restrict.Stdin=pipe
+		err=index.Start()
+		if err!=nil{return "failed to cat: "+err.Error()}
+		out,err:=restrict.Output()
+		if err!=nil{return "failed to get out: "+err.Error()}
+		return style.Render(highlightCode(path,string(out)))
+	}
+	return style.Render("unknow")
+}
+
+func highlightCode(path string, content string) string {
+    // 1. 根据文件名获取对应的词法分析器 (Lexer)
+    lexer := lexers.Match(path)
+    if lexer == nil {
+        lexer = lexers.Fallback
+    }
+
+    style := styles.Get("dracula")
+    if style == nil {
+        style = styles.Fallback
+    }
+
+    formatter := formatters.Get("terminal256")
+    if formatter == nil {
+        formatter = formatters.Fallback
+    }
+
+    // 4. 进行高亮处理
+    var buf bytes.Buffer
+    iterator, _ := lexer.Tokenise(nil, content)
+    formatter.Format(&buf, style, iterator)
+
+    return buf.String()
+}
