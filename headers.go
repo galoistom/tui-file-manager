@@ -15,27 +15,31 @@ var (
 	yank []string
 )
 
-type Myerror struct{
-	err error
+type Myerror struct {
+	err     error
 	message string
 }
 
-func (err Myerror) Error() string{
+func (err Myerror) Error() string {
 	return strings.Join([]string{err.message}, err.err.Error())
 }
 
-func HandleCreateMap (s string) int{
-	switch s{
-	case "f","enter": return 1
-	case "d": return 2
-	case "s": return 3
+func HandleCreateMap(s string) int {
+	switch s {
+	case "f", "enter":
+		return 1
+	case "d":
+		return 2
+	case "s":
+		return 3
 	}
 	return -1
 }
 
 type mode int
+
 const (
-	modeNormal mode= iota
+	modeNormal mode = iota
 	modeSearch
 	modeCommand
 	modeCreate
@@ -46,92 +50,92 @@ const (
 )
 
 var (
-    // 基础颜色和边框
+	// 基础颜色和边框
 	headerStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#7D56F4")).
-		Bold(true).
-		Padding(0, 1)
+			Foreground(lipgloss.Color("#7D56F4")).
+			Bold(true).
+			Padding(0, 1)
 
 	selectedStyle = lipgloss.NewStyle().
-		Background(lipgloss.Color("#5A56E0")).
-		Foreground(lipgloss.Color("#FFFFFF")).
-		Bold(true)
+			Background(lipgloss.Color("#5A56E0")).
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Bold(true)
 
 	dimStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#555555"))
+			Foreground(lipgloss.Color("#555555"))
 
 	// 命令输入框样式
 	inputStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#FF5F87")).
-		Bold(true)
+			Foreground(lipgloss.Color("#FF5F87")).
+			Bold(true)
 	infoStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241")).
-		Italic(true)
+			Foreground(lipgloss.Color("241")).
+			Italic(true)
 	errorStyle = lipgloss.NewStyle().
-		Background(lipgloss.Color("#FF0000")).
-		Foreground(lipgloss.Color("#FFFFFF")).
-		Bold(true).
-		Padding(0, 1)
+			Background(lipgloss.Color("#FF0000")).
+			Foreground(lipgloss.Color("#FFFFFF")).
+			Bold(true).
+			Padding(0, 1)
 )
 
-type fileitm struct{
+type fileitm struct {
 	name string
 	path string
 	mode string
 }
 
-type module struct{
-	cursor int
-	selected map[int]struct{}
-	entries []fileitm
-	path string
-	height int
-	width int
-	offset int
-	ti textinput.Model
-	searching bool
-	message string
-	isError bool
+type module struct {
+	cursor      int
+	selected    map[int]struct{}
+	entries     []fileitm
+	path        string
+	height      int
+	width       int
+	offset      int
+	ti          textinput.Model
+	searching   bool
+	message     string
+	isError     bool
 	currentMode mode
-	tempFile string
-	previe bool
+	tempFile    string
+	previe      bool
 }
 
 type itemsMsg []fileitm
 type editorMsg struct{}
 
-type Config struct{
+type Config struct {
 	Bookmark map[string]string `json:"bookmark"`
-	SHELL string `json:"shell"`
-	EDITOR string `json:"editor"`
-	GAP int `json:"gap"`
+	SHELL    string            `json:"shell"`
+	EDITOR   string            `json:"editor"`
+	GAP      int               `json:"gap"`
 }
 
-var Configs  Config
+var Configs Config
 
 func init() {
-	file:="config.json"
-	_,err:= os.Stat(file)
-	if err!=nil {
-		if  !os.IsNotExist(err){
+	file := "config.json"
+	_, err := os.Stat(file)
+	if err != nil {
+		if !os.IsNotExist(err) {
 			fmt.Println("failed to get config status: ", err)
-                        os.Exit(3)
+			os.Exit(3)
 		} else {
-			data, err:= json.MarshalIndent(Configs, "", "    ")
-			if err!= nil{
+			data, err := json.MarshalIndent(Configs, "", "    ")
+			if err != nil {
 				fmt.Println("failed to write config: ", err)
 				os.Exit(3)
 			}
-			os.WriteFile(file,data, 0644)
+			os.WriteFile(file, data, 0644)
 		}
 	}
-	fileContent, err:= os.ReadFile(file)
-	if err!=nil{
+	fileContent, err := os.ReadFile(file)
+	if err != nil {
 		fmt.Println("Error occoured when reading: ", err)
 		os.Exit(1)
 	}
-	err= json.Unmarshal(fileContent, &Configs)
-	if err!=nil{
+	err = json.Unmarshal(fileContent, &Configs)
+	if err != nil {
 		fmt.Println("Error unamarshalling JSON: ", err)
 		os.Exit(3)
 	}
