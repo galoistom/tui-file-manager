@@ -284,24 +284,24 @@ func (m module) Preview(width int, height int) string {
 		return style.Render(string(out))
 	}
 	if f.Mode().String()[0] == '-' {
-		theFile:=m.entries[m.cursor]
-		ext:=filepath.Ext(theFile.name)
-		if _,ok:=needProcess[ext];ok{
-			path,err:= convertJPG(theFile.path,ext)
-			if err!=nil{
-				return style.Render("failed to convert: "+ err.Error())
+		theFile := m.entries[m.cursor]
+		ext := filepath.Ext(theFile.name)
+		if _, ok := needProcess[ext]; ok {
+			path, err := convertJPG(theFile.path, ext)
+			if err != nil {
+				return style.Render("failed to convert: " + err.Error())
 			}
-//			path:=theFile.path
+			//			path:=theFile.path
 			cmd := exec.Command(
 				"chafa",
-				"-f","symbols",
+				"-f", "symbols",
 				"--size", fmt.Sprintf("%dx%d", width-3, height),
 				"--symbols", "block",
 				path,
 			)
-			out,err:=cmd.Output()
-			if err!=nil{
-				return style.Render("failed to show: "+ err.Error())
+			out, err := cmd.Output()
+			if err != nil {
+				return style.Render("failed to show: " + err.Error())
 			}
 			return style.Render(string(out))
 		}
@@ -365,7 +365,7 @@ func convertJPG(path string, t string) (string, error) {
 	switch t {
 	case ".pdf":
 		cmd = *exec.Command("pdftoppm", "-jpeg", "-f", "1", "-singlefile", path, getCacheName(path))
-	case ".doc", ".xls", ".docx", ".xlsx":
+	case ".doc", ".xls", ".docx", ".xlsx", "pptx":
 		cmd = *exec.Command("libreoffice", "--convert-to", "jpg", path, "--outdir", filepath.Dir(cachePath))
 		if err := cmd.Run(); err != nil {
 			return "", err
@@ -385,7 +385,7 @@ func convertJPG(path string, t string) (string, error) {
 		return path, nil
 	}
 	if err := cmd.Run(); err != nil {
-		return "", Myerror{message:getCacheName(path),err:err}
+		return "", Myerror{message: getCacheName(path), err: err}
 	}
 	return cachePath, nil
 }
