@@ -5,8 +5,10 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -217,6 +219,10 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "G", "alt+shift+.":
 			m.GotoFile(len(m.entries) - 1)
 
+		case "ctrl+j":
+			m.currentMode=modeCommand
+			m.ti.SetValue("goto "+m.path)
+
 		// The "up" and "k" keys move the cursor up
 		case "up", "k", "ctrl+p":
 			m.GotoFile(m.cursor - 1)
@@ -353,9 +359,9 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentMode = modeCreate
 			temp = -1
 
-		//previe
+		//preview
 		case "v":
-			m.previe = !m.previe
+			m.preview = !m.preview
 
 		//press alt+x or : to input command
 		case "alt+x", ":":
@@ -449,7 +455,7 @@ func (m module) View() tea.View {
 	}
 	rows = append(rows, footer)
 
-	if m.previe {
+	if m.preview {
 		indexSize := int(float64(m.width) * 0.45)
 		preSize := m.width - indexSize - 2
 		prev := m.Preview(preSize, m.height)
@@ -492,6 +498,13 @@ func (m module) View() tea.View {
 
 func main() {
 	args := os.Args
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		os.RemoveAll(cache)
+		os.Exit(0)
+	}()
 	currentPath, err := os.Getwd()
 	if err != nil {
 		fmt.Println("failed to get position:", err)

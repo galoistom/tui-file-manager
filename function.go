@@ -2,12 +2,8 @@ package main
 
 import (
 	"bytes"
-	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
+	"crypto/md5"
 	"fmt"
-	"github.com/alecthomas/chroma/v2/formatters"
-	"github.com/alecthomas/chroma/v2/lexers"
-	"github.com/alecthomas/chroma/v2/styles"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -15,6 +11,12 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	"github.com/alecthomas/chroma/v2/formatters"
+	"github.com/alecthomas/chroma/v2/lexers"
+	"github.com/alecthomas/chroma/v2/styles"
 )
 
 func (m *module) GotoFile(n int) {
@@ -155,11 +157,11 @@ func (m *module) ExecCommand() {
 			m.message = "fialed to execute: " + err.Error()
 			m.isError = true
 			return
-
 		}
+		m.message = "Succeed!"
 	case "goto":
 		if len(insertCommand) == 2 {
-			path := expandPath(insertCommand[1])
+			path := ExpandPath(insertCommand[1])
 			f, err := os.Stat(path)
 			if err != nil {
 				m.message = "not a correct path:" + err.Error()
@@ -182,7 +184,7 @@ func (m *module) ExecCommand() {
 		}
 	case "copyto":
 		if len(insertCommand) == 2 {
-			path := expandPath(insertCommand[1])
+			path := ExpandPath(insertCommand[1])
 			f, err := os.Stat(path)
 			if err != nil {
 				m.message = "not a correct path:" + err.Error()
@@ -216,7 +218,7 @@ func (m *module) ExecCommand() {
 	}
 }
 
-func expandPath(path string) string {
+func ExpandPath(path string) string {
 	if len(path) == 0 || path[0] != '~' {
 		return path
 	}
@@ -326,4 +328,31 @@ func highlightCode(path string, content string) string {
 	formatter.Format(&buf, style, iterator)
 
 	return buf.String()
+}
+
+func getCacheName(path string) string {
+	hash := fmt.Sprintf("%x.jpg", md5.Sum([]byte(path)))
+	return filepath.Join(cache, hash)
+}
+
+func convertJPG(path string, t string) (string, error) {
+	cachePath := getCacheName(path)
+	if _, err := os.Stat(path); err == nil {
+		return t, nil
+	}
+	var cmd exec.Cmd
+	switch t {
+	case "pdf":
+		cmd = *exec.Command("pdftoppm", "-jpeg", "-f", "1", "-singlefile", path, cachePath, ".jpg")
+	case "doc", "xls":
+		cmd = *exec.Command("libreoffice", "--convert-to", "jpg", path, "--outdir", cachePath)
+	case "mp4", "mkv":
+		cmd = *exec.Command("ffmpegthumbnailer", "-i", path, "-o", cachePath, "-s", "0")
+	default:
+		return path, nil
+	}
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return cachePath, nil
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"charm.land/bubbles/v2/textinput"
@@ -11,8 +12,9 @@ import (
 )
 
 var (
-	temp int
-	yank []string
+	temp  int
+	yank  []string
+	cache = filepath.Join(os.TempDir(), "tui-fm")
 )
 
 type Myerror struct {
@@ -98,7 +100,7 @@ type module struct {
 	isError     bool
 	currentMode mode
 	tempFile    string
-	previe      bool
+	preview     bool
 }
 
 type itemsMsg []fileitm
@@ -109,12 +111,18 @@ type Config struct {
 	SHELL    string            `json:"shell"`
 	EDITOR   string            `json:"editor"`
 	GAP      int               `json:"gap"`
+	CONFIG   string            `json:"config"`
 }
 
-var Configs Config
+var Configs = Config{
+	SHELL:  "bash",
+	EDITOR: "vim",
+	GAP:    10,
+	CONFIG: "~/.config/tui-fm/config.json",
+}
 
 func init() {
-	file := "config.json"
+	file := ExpandPath(Configs.CONFIG)
 	_, err := os.Stat(file)
 	if err != nil {
 		if !os.IsNotExist(err) {

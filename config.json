@@ -6,5 +6,6 @@
     },
     "gap": 10,
     "editor": "nvim",
-    "shell": "zsh"
+    "shell": "zsh",
+    "config": "/home/galoistom/.config/tui-fm/config.json"
 }
