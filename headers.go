@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -12,9 +13,9 @@ import (
 )
 
 var (
-	temp  int
-	yank  []string
-	cache = filepath.Join(os.TempDir(), "tui-fm")
+	temp        int
+	yank        []string
+	cache       = filepath.Join(os.TempDir(), "tui-fm")
 	needProcess = map[string]struct{}{
 		".pdf":  {},
 		".mp4":  {},
@@ -139,6 +140,7 @@ func init() {
 			fmt.Println("failed to get config status: ", err)
 			os.Exit(3)
 		} else {
+			err = exec.Command("mkdir", "-p", filepath.Dir(file)).Run()
 			data, err := json.MarshalIndent(Configs, "", "    ")
 			if err != nil {
 				fmt.Println("failed to write config: ", err)
@@ -157,5 +159,5 @@ func init() {
 		fmt.Println("Error unamarshalling JSON: ", err)
 		os.Exit(1)
 	}
-	os.Mkdir(cache,0750)
+	os.Mkdir(cache, 0750)
 }
