@@ -23,7 +23,7 @@ func (m *module) GotoFile(n int) {
 		return
 	}
 	if n>m.cursor{
-		m.offset=min(max(len(m.entries)-m.height,0),
+		m.offset=min(max(len(m.entries)-m.height+4,0),
 			max(m.offset, n+Configs.GAP-m.height))
 	} else if n< m.cursor{
 		m.offset=max(0, min(m.offset, n-Configs.GAP))

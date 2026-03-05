@@ -171,8 +171,8 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case error: fmt.Println(msg)
 
 	case tea.WindowSizeMsg:
-		m.height= msg.Height - 3
-		m.width= msg.Width - 3
+		m.height= msg.Height - 2
+		m.width= msg.Width
 	
 	case itemsMsg: m.entries= msg
 
@@ -363,7 +363,8 @@ func (m module) View() tea.View {
 	listHeith:= m.height- reserve
 	if listHeith<0 {listHeith=1}
 
-	end:= min(m.offset + m.height, len(m.entries))
+	end:= min(m.offset + m.height-4, len(m.entries))
+	end=max(end,0)
 	visible:= m.entries[m.offset:end]
 	for i, item := range visible{
 		absolute:= i+ m.offset
@@ -382,7 +383,7 @@ func (m module) View() tea.View {
 			rows= append(rows, lineContent)
 		}
 	}
-	for len(rows)< m.height-5 {
+	for len(rows)< m.height-3 {
 		rows= append(rows,"")
 	}
 	footer:= dimStyle.Render("\n type \"q\" to quit")
@@ -413,9 +414,9 @@ func (m module) View() tea.View {
 		prev:=m.Preview(preSize, m.height)
 		style := lipgloss.NewStyle().
 			Width(indexSize).
-			Height(m.height-1).
+			Height(m.height).
 			MaxWidth(indexSize).
-			MaxHeight(m.height-1).
+			MaxHeight(m.height).
 			Padding(0).
 			BorderStyle(lipgloss.HiddenBorder())
 		filesView:= style.Render(
@@ -436,8 +437,8 @@ func (m module) View() tea.View {
 	// Send the UI for rendering
 	return tea.View{
 		Content: lipgloss.NewStyle().
-		Width(m.width).Height(m.height-1).
-		MaxWidth(m.width).MaxHeight(m.height-1).
+		Width(m.width).Height(m.height).
+		MaxWidth(m.width).MaxHeight(m.height).
 		Padding(0).
 			BorderStyle(lipgloss.HiddenBorder()).
 			Render(lipgloss.JoinVertical(
