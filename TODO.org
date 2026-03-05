@@ -22,13 +22,13 @@
 - [X] one by one
 - [X] like in nnn or dired
 
-* TODO multiple tabs
+* DONE multiple tabs
 
 * DONE bookmark
 
 * TODO preview file/folders
-- [ ] folders
-- [ ] files (with hight light)
+- [X] folders
+- [X] files (with hight light)
 - [ ] jpg/png/gif
 - [ ] pdf/xls
 
