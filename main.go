@@ -74,14 +74,14 @@ func (m *module) handleDelete(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "c", "enter":
 			os.RemoveAll(m.entries[m.cursor].path)
-			m.GotoFile(0)
+			m.GotoFile(min(m.cursor, len(m.entries)-2))
 			return m, FetchFile(m.path)
 		case "s":
 			for i := range m.selected {
 				os.RemoveAll(m.entries[i].path)
 			}
+			m.GotoFile(min(m.cursor, len(m.entries)-1-len(m.selected)))
 			m.selected = make(map[int]struct{})
-			m.GotoFile(0)
 			return m, FetchFile(m.path)
 		}
 	}
