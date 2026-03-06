@@ -379,7 +379,9 @@ func convertJPG(path string, t string) (string, error) {
 			return "", fmt.Errorf("rename failed: %v", err)
 		}
 	case ".mp4", ".mkv", ".mov":
-		cmd = *exec.Command("ffmpegthumbnailer", "-i", path, "-o", cachePath, "-s", "1")
+		//cmd = *exec.Command("ffmpegthumbnailer", "-i", path, "-o", cachePath, "-s", "1")
+		cmd = *exec.Command("ffmpeg", "-i", path, "-frames:v", "1",cachePath)
+//		ffmpeg -i video.mp4 -frames:v 1 cover.jpg
 	default:
 		return path, nil
 	}
