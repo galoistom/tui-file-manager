@@ -2,8 +2,13 @@ package main
 
 import (
 	"bytes"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	"crypto/md5"
 	"fmt"
+	"github.com/alecthomas/chroma/v2/formatters"
+	"github.com/alecthomas/chroma/v2/lexers"
+	"github.com/alecthomas/chroma/v2/styles"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -11,12 +16,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
-	tea "charm.land/bubbletea/v2"
-	"charm.land/lipgloss/v2"
-	"github.com/alecthomas/chroma/v2/formatters"
-	"github.com/alecthomas/chroma/v2/lexers"
-	"github.com/alecthomas/chroma/v2/styles"
 )
 
 func (m *module) GotoFile(n int) {
@@ -294,6 +293,7 @@ func (m module) Preview(width int, height int) string {
 			cmd := exec.Command(
 				"chafa",
 				"-f", "symbols",
+				"--animate=no",
 				"--size", fmt.Sprintf("%dx%d", width-3, height),
 				"--symbols", "block",
 				path,
@@ -358,7 +358,7 @@ func getCacheName(path string) string {
 func convertJPG(path string, t string) (string, error) {
 	cachePath := getCacheName(path) + ".jpg"
 	if _, err := os.Stat(cachePath); err == nil {
-		return t, nil
+		return getCacheName(path) + ".jpg", nil
 	}
 	var cmd exec.Cmd
 	switch t {
@@ -379,12 +379,12 @@ func convertJPG(path string, t string) (string, error) {
 			return "", fmt.Errorf("rename failed: %v", err)
 		}
 	case ".mp4", ".mkv", ".mov":
-		cmd = *exec.Command("ffmpegthumbnailer", "-i", path, "-o", cachePath, "-s", "0")
+		cmd = *exec.Command("ffmpegthumbnailer", "-i", path, "-o", cachePath, "-s", "1")
 	default:
 		return path, nil
 	}
 	if err := cmd.Run(); err != nil {
-		return "", Myerror{message: getCacheName(path), err: err}
+		return "", Myerror{message: getCacheName(path) + " " + path, err: err}
 	}
 	return cachePath, nil
 }

@@ -15,7 +15,7 @@ import (
 var (
 	temp        int
 	yank        []string
-	cache       = filepath.Join(os.TempDir(), "tui-fm")
+	cache       string
 	needProcess = map[string]struct{}{
 		".pdf":  {},
 		".mp4":  {},
@@ -159,5 +159,10 @@ func init() {
 		fmt.Println("Error unamarshalling JSON: ", err)
 		os.Exit(1)
 	}
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		cacheDir = os.TempDir()
+	}
+	cache = filepath.Join(cacheDir, "tui-fm")
 	os.Mkdir(cache, 0750)
 }

@@ -5,14 +5,17 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"os/signal"
+	//	"os/signal"
 	"path/filepath"
+
+	//	"strconv"
 	"strings"
-	"syscall"
+	//	"syscall"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/mattn/go-runewidth"
 )
 
 func initialModel(path string) module {
@@ -402,6 +405,10 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m module) View() tea.View {
+	indexSize := m.width
+	if m.preview {
+		indexSize = int(float64(m.width) * 0.45)
+	}
 	var rows []string
 	rows = append(rows, headerStyle.Render("📂 "+m.path))
 	reserve := 3
@@ -424,6 +431,7 @@ func (m module) View() tea.View {
 			checked = "x"
 		}
 		lineContent := fmt.Sprintf("%s%s %s %s", cursor, checked, item.mode, item.name)
+		lineContent = runewidth.Truncate(lineContent, indexSize-3, "...")
 		if m.cursor == absolute {
 			rows = append(rows, selectedStyle.Render(lineContent))
 		} else {
@@ -433,7 +441,7 @@ func (m module) View() tea.View {
 	for len(rows) < m.height-3 {
 		rows = append(rows, "")
 	}
-	footer := dimStyle.Render("\n type \"q\" to quit")
+	footer := dimStyle.Render("type \"q\" to quit")
 	switch m.currentMode {
 	case modeCommand:
 		footer = inputStyle.Render("\n M-x ") + m.ti.View()
@@ -456,14 +464,13 @@ func (m module) View() tea.View {
 	rows = append(rows, footer)
 
 	if m.preview {
-		indexSize := int(float64(m.width) * 0.45)
 		preSize := m.width - indexSize - 2
 		prev := m.Preview(preSize, m.height)
 		style := lipgloss.NewStyle().
-			Width(indexSize).
 			Height(m.height).
-			MaxWidth(indexSize).
 			MaxHeight(m.height).
+			Width(indexSize).
+			MaxWidth(indexSize).
 			Padding(0).
 			BorderStyle(lipgloss.HiddenBorder())
 		filesView := style.Render(
@@ -484,8 +491,7 @@ func (m module) View() tea.View {
 	// Send the UI for rendering
 	return tea.View{
 		Content: lipgloss.NewStyle().
-			Width(m.width).Height(m.height).
-			MaxWidth(m.width).MaxHeight(m.height).
+			MaxHeight(m.height).Height(m.height).
 			Padding(0).
 			BorderStyle(lipgloss.HiddenBorder()).
 			Render(lipgloss.JoinVertical(
@@ -498,19 +504,21 @@ func (m module) View() tea.View {
 
 func main() {
 	args := os.Args
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-c
-		os.RemoveAll(cache)
-		os.Exit(0)
-	}()
 	currentPath, err := os.Getwd()
 	if err != nil {
 		fmt.Println("failed to get position:", err)
 	}
 	if len(args) > 1 {
 		currentPath = args[1]
+	}
+	if currentPath == "-c" {
+		os.RemoveAll(cache)
+		fmt.Println("cache file cleared")
+		return
+	}
+	f, err := os.Stat(currentPath)
+	if err != nil || !f.IsDir() {
+		fmt.Println("usage: tfm <dictionary path>", "-c to clear cache")
 	}
 	p := tea.NewProgram(
 		initialModel(currentPath),
