@@ -291,7 +291,6 @@ func (m module) Preview(width int, height int) string {
 			if err != nil {
 				return style.Render("failed to convert: " + err.Error())
 			}
-			//			path:=theFile.path
 			cmd := exec.Command(
 				"chafa",
 				"-f", "symbols",
