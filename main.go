@@ -220,8 +220,8 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.GotoFile(len(m.entries) - 1)
 
 		case "ctrl+j":
-			m.currentMode=modeCommand
-			m.ti.SetValue("goto "+m.path)
+			m.currentMode = modeCommand
+			m.ti.SetValue("goto " + m.path)
 
 		// The "up" and "k" keys move the cursor up
 		case "up", "k", "ctrl+p":
@@ -512,11 +512,6 @@ func main() {
 	if len(args) > 1 {
 		currentPath = args[1]
 	}
-	f, err := tea.LogToFile("debug.log", "debug")
-	if err != nil {
-		log.Fatalf("err: %e", err)
-	}
-	defer f.Close()
 	p := tea.NewProgram(
 		initialModel(currentPath),
 	)
