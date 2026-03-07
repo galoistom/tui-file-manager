@@ -14,6 +14,8 @@ chinese named file handling:
 
 Dependency for preview: chafa(image rendering), ffmpeg(convert vedio to image), libreoffice(convert office file to image), poppler(convert pdf to image)
 
+If you are using kitty, then there will be high resolution preview for images
+
 * Configuration
 It will creat a default configuration in "$HOME/.config/tui-fm/config.json", set book mark with full path name, and editor you prefer
 
