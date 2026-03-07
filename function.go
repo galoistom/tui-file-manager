@@ -322,27 +322,17 @@ func (m module) Preview(width int, height int) string {
 			return style.Render(string(out))
 		}
 		path := theFile.path
+		var index *exec.Cmd
 		switch ext {
 		case ".zip":
-			out, err := exec.Command("unzip", "-l", path).Output()
-			if err != nil {
-				return err.Error()
-			}
-			return style.Render(string(out))
+			index = exec.Command("unzip", "-l", path)
 		case ".tar":
-			out, err := exec.Command("tar", "-tf", path).Output()
-			if err != nil {
-				return err.Error()
-			}
-			return style.Render(string(out))
-		case ".gz",".tgz":
-			out, err := exec.Command("tar", "-tzf", path).Output()
-			if err != nil {
-				return err.Error()
-			}
-			return style.Render(string(out))
+			index = exec.Command("tar", "-tf", path)
+		case ".gz", ".tgz":
+			index = exec.Command("tar", "-tzf", path)
+		default:
+			index = exec.Command("cat", "-n", path)
 		}
-		index := exec.Command("cat", "-n", path)
 		restrict := exec.Command("head", "-n", strconv.Itoa(height-5))
 		pipe, err := index.StdoutPipe()
 		if err != nil {
@@ -427,7 +417,7 @@ func convertJPG(path string, t string) (string, error) {
 }
 
 func (m *module) PreviewCmd(imagePath string) tea.Cmd {
-	os.Stdout.Write([]byte("\x1b_Ga=d\x1b\\"))	
+	os.Stdout.Write([]byte("\x1b_Ga=d\x1b\\"))
 	if !isKitty() {
 		return nil
 	}
