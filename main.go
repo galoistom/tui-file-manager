@@ -5,17 +5,14 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	//	"os/signal"
 	"path/filepath"
-
-	//	"strconv"
 	"strings"
-	//	"syscall"
 
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
+//	"golang.org/x/tools/refactor/rename"
 )
 
 func initialModel(path string) module {
@@ -53,6 +50,13 @@ func FetchFile(path string) tea.Cmd {
 			})
 		}
 		return itemsMsg(items)
+	}
+}
+
+func clearPreview() tea.Cmd {
+	return func() tea.Msg {
+		os.Stdout.Write([]byte("\x1b_Ga=d\x1b\\"))
+		return redrawMsg{}
 	}
 }
 
@@ -101,11 +105,11 @@ func (m *module) handleTyping(msg tea.Msg, action func() tea.Cmd) tea.Cmd {
 			m.ti.SetValue("")
 			m.message = ""
 			m.isError = false
-			cmd=nil
+			cmd = nil
 		case "enter":
 			m.message = ""
 			m.isError = false
-			cmd=action()
+			cmd = action()
 			m.currentMode = modeNormal
 			m.ti.SetValue("")
 		default:
@@ -201,6 +205,9 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case itemsMsg:
 		m.entries = msg
+
+	case redrawMsg:
+		return m, FetchFile(m.path)
 
 	case editorMsg:
 		return m, FetchFile(m.path)
@@ -364,8 +371,11 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//preview
 		case "v":
 			m.preview = !m.preview
-			if m.preview{
+			if m.preview {
 				return m, m.PreviewCmd(m.entries[m.cursor].path)
+			} else {
+				os.Stdout.Write([]byte("\x1b_Ga=d\x1b\\"))
+				return m, tea.ClearScreen
 			}
 
 		//press alt+x or : to input command
@@ -387,7 +397,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		//open shell
 		case "t":
-			if !m.preview{
+			if !m.preview {
 				return m, tea.Batch(OpenShell(m.path, Configs.SHELL), FetchFile(m.path))
 			}
 
@@ -490,11 +500,7 @@ func (m module) View() tea.View {
 			),
 			AltScreen: true,
 		}
-	} else {
-
-		os.Stdout.Write([]byte("\x1b_Ga=d\x1b\\"))
 	}
-
 	// Send the UI for rendering
 	return tea.View{
 		Content: lipgloss.NewStyle().

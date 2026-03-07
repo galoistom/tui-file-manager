@@ -18,6 +18,10 @@ import (
 	"strings"
 )
 
+func isKitty() bool {
+	return os.Getenv("KITTY_WINDOW_ID") != ""
+}
+
 func (m *module) GotoFile(n int) tea.Cmd {
 	os.Stdout.Write([]byte("\x1b_Ga=d\x1b\\"))
 	m.message = ""
@@ -177,6 +181,7 @@ func (m *module) ExecCommand() tea.Cmd {
 				m.path = path
 				m.cursor = 0
 				m.offset = 0
+				os.Stdout.Write([]byte("\x1b_Ga=d\x1b\\"))
 			}
 		} else {
 			m.message = "format incorrect"
@@ -295,26 +300,48 @@ func (m module) Preview(width int, height int) string {
 		theFile := m.entries[m.cursor]
 		ext := filepath.Ext(theFile.name)
 		if _, ok := needProcess[ext]; ok {
-			// path, err := convertJPG(theFile.path, ext)
-			// if err != nil {
-			// 	return style.Render("failed to convert: " + err.Error())
-			// }
-			// cmd := exec.Command(
-			// 	"chafa",
-			// 	"-f", "symbols",
-			// 	"--animate=no",
-			// 	"--size", fmt.Sprintf("%dx%d", width-3, height),
-			// 	"--symbols", "block",
-			// 	path,
-			// )
-			// out, err := cmd.Output()
-			// if err != nil {
-			// 	return style.Render("failed to show: " + err.Error())
-			// }
-			// return style.Render(string(out))
-			return style.Render("file")
+			if isKitty() {
+				return style.Render("")
+			}
+			path, err := convertJPG(theFile.path, ext)
+			if err != nil {
+				return style.Render("failed to convert: " + err.Error())
+			}
+			cmd := exec.Command(
+				"chafa",
+				"-f", "symbols",
+				"--animate=no",
+				"--size", fmt.Sprintf("%dx%d", width-3, height),
+				"--symbols", "block",
+				path,
+			)
+			out, err := cmd.Output()
+			if err != nil {
+				return style.Render("failed to show: " + err.Error())
+			}
+			return style.Render(string(out))
 		}
 		path := theFile.path
+		switch ext {
+		case ".zip":
+			out, err := exec.Command("unzip", "-l", path).Output()
+			if err != nil {
+				return err.Error()
+			}
+			return style.Render(string(out))
+		case ".tar":
+			out, err := exec.Command("tar", "-tf", path).Output()
+			if err != nil {
+				return err.Error()
+			}
+			return style.Render(string(out))
+		case ".gz",".tgz":
+			out, err := exec.Command("tar", "-tzf", path).Output()
+			if err != nil {
+				return err.Error()
+			}
+			return style.Render(string(out))
+		}
 		index := exec.Command("cat", "-n", path)
 		restrict := exec.Command("head", "-n", strconv.Itoa(height-5))
 		pipe, err := index.StdoutPipe()
@@ -400,8 +427,12 @@ func convertJPG(path string, t string) (string, error) {
 }
 
 func (m *module) PreviewCmd(imagePath string) tea.Cmd {
+	os.Stdout.Write([]byte("\x1b_Ga=d\x1b\\"))	
+	if !isKitty() {
+		return nil
+	}
 	ext := filepath.Ext(imagePath)
-	if _,ok:=needProcess[ext];!ok{
+	if _, ok := needProcess[ext]; !ok {
 		return nil
 	}
 	path, err := convertJPG(imagePath, ext)
@@ -410,30 +441,20 @@ func (m *module) PreviewCmd(imagePath string) tea.Cmd {
 		m.message = "failed to preview"
 		return nil
 	}
-	return func() tea.Msg {
-		yOffset := 2
-		x := int(float64(m.width) * 0.45)+1 // 图片起始列
-		cmd := exec.Command("kitty", "+kitten", "icat",
-			"--z-index", "1",
-			"--place", fmt.Sprintf("%dx%d@%dx%d",m.width-x,m.height,x,yOffset),
-			"--transfer-mode=file", path)
-		cmd.Env = os.Environ()
-		cmd.Stdout = os.Stdout
-		cmd.Stdin = os.Stdin
-		cmd.Stderr= os.Stderr
-		err := cmd.Start()
-		if err != nil {
-			return err.Error()
-		}
-		return nil
+	yOffset := 2
+	x := int(float64(m.width)*0.45) + 2 // 图片起始列
+	cmd := exec.Command("kitty", "+kitten", "icat",
+		"--z-index", "-1",
+		"--place", fmt.Sprintf("%dx%d@%dx%d", m.width-x, m.height-3, x, yOffset),
+		"--transfer-mode=file", path)
+	cmd.Env = os.Environ()
+	cmd.Stdout = os.Stdout
+	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
+	err = cmd.Start()
+	if err != nil {
+		m.isError = true
+		m.message = err.Error()
 	}
+	return tea.ClearScreen
 }
-
-// args := []string{
-//     "+kitten", "icat",
-//     "--silent",
-// 	"--transfer-mode", "file",
-// 	"--z-index", "1",
-//     "--place", fmt.Sprintf("%dx@%dx%d", w, x, yOffset),
-//     path,
-// }

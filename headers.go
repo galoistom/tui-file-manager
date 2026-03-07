@@ -116,6 +116,7 @@ type module struct {
 
 type itemsMsg []fileitm
 type editorMsg struct{}
+type redrawMsg struct{}
 
 type Config struct {
 	Bookmark map[string]string `json:"bookmark"`
