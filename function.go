@@ -18,11 +18,12 @@ import (
 	"strings"
 )
 
-func (m *module) GotoFile(n int) {
+func (m *module) GotoFile(n int) tea.Cmd {
+	os.Stdout.Write([]byte("\x1b_Ga=d\x1b\\"))
 	m.message = ""
 	m.isError = false
 	if n > len(m.entries)-1 || n < 0 {
-		return
+		return nil
 	}
 	if n > m.cursor {
 		m.offset = min(max(len(m.entries)-m.height+4, 0),
@@ -31,6 +32,10 @@ func (m *module) GotoFile(n int) {
 		m.offset = max(0, min(m.offset, n-Configs.GAP))
 	}
 	m.cursor = n
+	if m.preview {
+		return m.PreviewCmd(m.entries[m.cursor].path)
+	}
+	return nil
 }
 
 func (m *module) Open(path string) tea.Cmd {
@@ -122,7 +127,7 @@ func (m *module) Search(pattern string, place int, mod bool) int {
 	return -1
 }
 
-func (m *module) ExecCommand() {
+func (m *module) ExecCommand() tea.Cmd {
 	insertCommand := strings.Fields(m.ti.Value())
 	switch insertCommand[0] {
 	case "go":
@@ -130,7 +135,7 @@ func (m *module) ExecCommand() {
 		if err != nil {
 			m.message = "Not numbers"
 			m.isError = true
-			return
+			return nil
 		}
 		m.GotoFile(n)
 	case "down":
@@ -138,7 +143,7 @@ func (m *module) ExecCommand() {
 		if err != nil {
 			m.message = "Not numbers"
 			m.isError = true
-			return
+			return nil
 		}
 		m.GotoFile(n + m.cursor)
 	case "up":
@@ -146,7 +151,7 @@ func (m *module) ExecCommand() {
 		if err != nil {
 			m.message = "Not numbers"
 			m.isError = true
-			return
+			return nil
 		}
 		m.GotoFile(m.cursor - n)
 	case "sh":
@@ -155,9 +160,10 @@ func (m *module) ExecCommand() {
 		if err := command.Run(); err != nil {
 			m.message = "fialed to execute: " + err.Error()
 			m.isError = true
-			return
+			return nil
 		}
 		m.message = "Succeed!"
+		return FetchFile(m.path)
 	case "goto":
 		if len(insertCommand) == 2 {
 			path := ExpandPath(insertCommand[1])
@@ -165,7 +171,7 @@ func (m *module) ExecCommand() {
 			if err != nil {
 				m.message = "not a correct path:" + err.Error()
 				m.isError = true
-				return
+				return nil
 			}
 			if f.IsDir() {
 				m.path = path
@@ -178,6 +184,7 @@ func (m *module) ExecCommand() {
 	case "rename":
 		if len(insertCommand) == 2 {
 			m.Rename(m.entries[m.cursor].path, insertCommand[1])
+			return FetchFile(m.path)
 		} else {
 			m.message = "format incorrect"
 		}
@@ -188,17 +195,17 @@ func (m *module) ExecCommand() {
 			if err != nil {
 				m.message = "not a correct path:" + err.Error()
 				m.isError = true
-				return
+				return nil
 			}
 			if !f.IsDir() {
-				return
+				return nil
 			}
 			if len(m.selected) == 0 {
 				cmd := exec.Command("cp", "-r", m.entries[m.cursor].path, path)
 				if err = cmd.Run(); err != nil {
 					m.message = "failed to pase: " + err.Error()
 					m.isError = true
-					return
+					return nil
 				}
 			} else {
 				for i := range m.selected {
@@ -215,6 +222,7 @@ func (m *module) ExecCommand() {
 	default:
 		m.message = fmt.Sprintf("Unknow command: %s", insertCommand[0])
 	}
+	return nil
 }
 
 func ExpandPath(path string) string {
@@ -234,7 +242,7 @@ func ExpandPath(path string) string {
 	return path
 }
 
-func (m *module) Creatf(mod int) {
+func (m *module) Creatf(mod int) tea.Cmd {
 	path := filepath.Join(m.path, m.ti.Value())
 	switch mod {
 	case 1:
@@ -257,6 +265,7 @@ func (m *module) Creatf(mod int) {
 			m.message = fmt.Sprintf("fialed to create: %v", err)
 		}
 	}
+	return nil
 }
 
 func (m module) Preview(width int, height int) string {
@@ -286,23 +295,24 @@ func (m module) Preview(width int, height int) string {
 		theFile := m.entries[m.cursor]
 		ext := filepath.Ext(theFile.name)
 		if _, ok := needProcess[ext]; ok {
-			path, err := convertJPG(theFile.path, ext)
-			if err != nil {
-				return style.Render("failed to convert: " + err.Error())
-			}
-			cmd := exec.Command(
-				"chafa",
-				"-f", "symbols",
-				"--animate=no",
-				"--size", fmt.Sprintf("%dx%d", width-3, height),
-				"--symbols", "block",
-				path,
-			)
-			out, err := cmd.Output()
-			if err != nil {
-				return style.Render("failed to show: " + err.Error())
-			}
-			return style.Render(string(out))
+			// path, err := convertJPG(theFile.path, ext)
+			// if err != nil {
+			// 	return style.Render("failed to convert: " + err.Error())
+			// }
+			// cmd := exec.Command(
+			// 	"chafa",
+			// 	"-f", "symbols",
+			// 	"--animate=no",
+			// 	"--size", fmt.Sprintf("%dx%d", width-3, height),
+			// 	"--symbols", "block",
+			// 	path,
+			// )
+			// out, err := cmd.Output()
+			// if err != nil {
+			// 	return style.Render("failed to show: " + err.Error())
+			// }
+			// return style.Render(string(out))
+			return style.Render("file")
 		}
 		path := theFile.path
 		index := exec.Command("cat", "-n", path)
@@ -379,9 +389,7 @@ func convertJPG(path string, t string) (string, error) {
 			return "", fmt.Errorf("rename failed: %v", err)
 		}
 	case ".mp4", ".mkv", ".mov":
-		//cmd = *exec.Command("ffmpegthumbnailer", "-i", path, "-o", cachePath, "-s", "1")
-		cmd = *exec.Command("ffmpeg", "-i", path, "-frames:v", "1",cachePath)
-//		ffmpeg -i video.mp4 -frames:v 1 cover.jpg
+		cmd = *exec.Command("ffmpeg", "-i", path, "-frames:v", "1", cachePath)
 	default:
 		return path, nil
 	}
@@ -390,3 +398,42 @@ func convertJPG(path string, t string) (string, error) {
 	}
 	return cachePath, nil
 }
+
+func (m *module) PreviewCmd(imagePath string) tea.Cmd {
+	ext := filepath.Ext(imagePath)
+	if _,ok:=needProcess[ext];!ok{
+		return nil
+	}
+	path, err := convertJPG(imagePath, ext)
+	if err != nil {
+		m.isError = true
+		m.message = "failed to preview"
+		return nil
+	}
+	return func() tea.Msg {
+		yOffset := 2
+		x := int(float64(m.width) * 0.45)+1 // 图片起始列
+		cmd := exec.Command("kitty", "+kitten", "icat",
+			"--z-index", "1",
+			"--place", fmt.Sprintf("%dx%d@%dx%d",m.width-x,m.height,x,yOffset),
+			"--transfer-mode=file", path)
+		cmd.Env = os.Environ()
+		cmd.Stdout = os.Stdout
+		cmd.Stdin = os.Stdin
+		cmd.Stderr= os.Stderr
+		err := cmd.Start()
+		if err != nil {
+			return err.Error()
+		}
+		return nil
+	}
+}
+
+// args := []string{
+//     "+kitten", "icat",
+//     "--silent",
+// 	"--transfer-mode", "file",
+// 	"--z-index", "1",
+//     "--place", fmt.Sprintf("%dx@%dx%d", w, x, yOffset),
+//     path,
+// }

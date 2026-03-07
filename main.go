@@ -56,7 +56,7 @@ func FetchFile(path string) tea.Cmd {
 	}
 }
 
-func (m *module) handleCreate(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *module) handleCreate(msg tea.Msg) tea.Cmd {
 	m.message = ""
 	if temp == -1 {
 		switch msg := msg.(type) {
@@ -64,12 +64,12 @@ func (m *module) handleCreate(msg tea.Msg) (tea.Model, tea.Cmd) {
 			temp = HandleCreateMap(msg.String())
 		}
 	} else {
-		return m.handleTyping(msg, func() { m.Creatf(temp) })
+		return m.handleTyping(msg, func() tea.Cmd { return m.Creatf(temp) })
 	}
-	return m, nil
+	return nil
 }
 
-func (m *module) handleDelete(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *module) handleDelete(msg tea.Msg) tea.Cmd {
 	m.message = ""
 	m.currentMode = modeNormal
 	switch msg := msg.(type) {
@@ -78,20 +78,20 @@ func (m *module) handleDelete(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "c", "enter":
 			os.RemoveAll(m.entries[m.cursor].path)
 			m.GotoFile(min(m.cursor, len(m.entries)-2))
-			return m, FetchFile(m.path)
+			return FetchFile(m.path)
 		case "s":
 			for i := range m.selected {
 				os.RemoveAll(m.entries[i].path)
 			}
 			m.GotoFile(min(m.cursor, len(m.entries)-1-len(m.selected)))
 			m.selected = make(map[int]struct{})
-			return m, FetchFile(m.path)
+			return FetchFile(m.path)
 		}
 	}
-	return m, nil
+	return nil
 }
 
-func (m *module) handleTyping(msg tea.Msg, action func()) (tea.Model, tea.Cmd) {
+func (m *module) handleTyping(msg tea.Msg, action func() tea.Cmd) tea.Cmd {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -101,22 +101,21 @@ func (m *module) handleTyping(msg tea.Msg, action func()) (tea.Model, tea.Cmd) {
 			m.ti.SetValue("")
 			m.message = ""
 			m.isError = false
-			return m, nil
+			cmd=nil
 		case "enter":
 			m.message = ""
 			m.isError = false
-			action()
+			cmd=action()
 			m.currentMode = modeNormal
 			m.ti.SetValue("")
-			return m, FetchFile(m.path)
 		default:
 			m.ti, cmd = m.ti.Update(msg)
 		}
 	}
-	return m, cmd
+	return cmd
 }
 
-func (m *module) handleSearching(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *module) handleSearching(msg tea.Msg) tea.Cmd {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -125,7 +124,7 @@ func (m *module) handleSearching(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentMode = modeNormal
 			m.ti.SetValue("")
 			m.GotoFile(temp)
-			return m, nil
+			return nil
 		case "enter":
 			m.currentMode = modeNormal
 			temp = m.cursor
@@ -134,14 +133,14 @@ func (m *module) handleSearching(msg tea.Msg) (tea.Model, tea.Cmd) {
 			place := m.Search(m.ti.Value(), m.cursor, true)
 			if place == -1 {
 				m.GotoFile(temp)
-				return m, cmd
+				return cmd
 			}
 			m.GotoFile(place)
 		case "ctrl+r":
 			place := m.Search(m.ti.Value(), m.cursor, false)
 			if place == -1 {
 				m.GotoFile(temp)
-				return m, cmd
+				return cmd
 			}
 			m.GotoFile(place)
 		default:
@@ -149,43 +148,43 @@ func (m *module) handleSearching(msg tea.Msg) (tea.Model, tea.Cmd) {
 			place := m.Search(m.ti.Value(), temp, m.searching)
 			if place == -1 {
 				m.GotoFile(temp)
-				return m, cmd
+				return cmd
 			}
 			m.GotoFile(place)
 		}
 	}
-	return m, cmd
+	return cmd
 }
 
-func (m *module) handleBookmark(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *module) handleBookmark(msg tea.Msg) tea.Cmd {
 	m.currentMode = modeNormal
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		path := Configs.Bookmark[msg.String()]
 		if path != "" {
 			m.path = path
-			return m, FetchFile(m.path)
+			return FetchFile(m.path)
 		}
 	}
-	return m, nil
+	return nil
 }
 
 func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.currentMode {
 	case modeCommand:
-		return m.handleTyping(msg, m.ExecCommand)
+		return m, m.handleTyping(msg, m.ExecCommand)
 
 	case modeSearch:
-		return m.handleSearching(msg)
+		return m, m.handleSearching(msg)
 
 	case modeCreate:
-		return m.handleCreate(msg)
+		return m, m.handleCreate(msg)
 
 	case modeDelete:
-		return m.handleDelete(msg)
+		return m, m.handleDelete(msg)
 
 	case modeBookmark:
-		return m.handleBookmark(msg)
+		return m, m.handleBookmark(msg)
 
 	case modeRename:
 		m.RenameUpdate()
@@ -217,10 +216,10 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "g", "alt+shift+,":
-			m.GotoFile(0)
+			return m, m.GotoFile(0)
 
 		case "G", "alt+shift+.":
-			m.GotoFile(len(m.entries) - 1)
+			return m, m.GotoFile(len(m.entries) - 1)
 
 		case "ctrl+j":
 			m.currentMode = modeCommand
@@ -228,11 +227,11 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// The "up" and "k" keys move the cursor up
 		case "up", "k", "ctrl+p":
-			m.GotoFile(m.cursor - 1)
+			return m, m.GotoFile(m.cursor - 1)
 
 		// The "down" and "j" keys move the cursor down
 		case "down", "j", "ctrl+n":
-			m.GotoFile(m.cursor + 1)
+			return m, m.GotoFile(m.cursor + 1)
 
 		// for the item that the cursor is pointing at.
 		case "space":
@@ -242,7 +241,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.selected[m.cursor] = struct{}{}
 			}
-			m.GotoFile(m.cursor + 1)
+			return m, m.GotoFile(m.cursor + 1)
 
 		//press enter or l to open
 		case "enter", "l":
@@ -365,6 +364,9 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//preview
 		case "v":
 			m.preview = !m.preview
+			if m.preview{
+				return m, m.PreviewCmd(m.entries[m.cursor].path)
+			}
 
 		//press alt+x or : to input command
 		case "alt+x", ":":
@@ -385,7 +387,9 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		//open shell
 		case "t":
-			return m, tea.Batch(OpenShell(m.path, Configs.SHELL), FetchFile(m.path))
+			if !m.preview{
+				return m, tea.Batch(OpenShell(m.path, Configs.SHELL), FetchFile(m.path))
+			}
 
 		//book mark
 		case "b":
@@ -486,6 +490,9 @@ func (m module) View() tea.View {
 			),
 			AltScreen: true,
 		}
+	} else {
+
+		os.Stdout.Write([]byte("\x1b_Ga=d\x1b\\"))
 	}
 
 	// Send the UI for rendering
