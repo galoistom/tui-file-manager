@@ -37,10 +37,27 @@ func (m *module) GotoFile(n int) tea.Cmd {
 		m.offset = max(0, min(m.offset, n-Configs.GAP))
 	}
 	m.cursor = n
+	out,err:=exec.Command("file", m.entries[m.cursor].path).Output()
+	if err==nil{m.message=getValue(string(out))}
 	if m.preview {
 		return m.PreviewCmd(m.entries[m.cursor].path)
 	}
 	return nil
+}
+
+func getValue(s string) string {
+	i := strings.Index(s, ":")
+	if i == -1 {
+		return ""
+	}
+
+	val := strings.TrimSpace(s[i+1:])
+
+	if j := strings.Index(val, ","); j != -1 {
+		val = val[:j]
+	}
+
+	return strings.TrimSpace(val)
 }
 
 func (m *module) Open(path string) tea.Cmd {

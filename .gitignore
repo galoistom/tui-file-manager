@@ -2,4 +2,5 @@ tui-file-manager
 *~
 debug.log
 test/*
+build/*
 build.sh
