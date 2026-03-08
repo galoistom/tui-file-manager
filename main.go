@@ -320,6 +320,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			var index strings.Builder
+			index.WriteString(m.path+"\n")
 			for i, ent := range m.entries {
 				fmt.Fprintf(&index, "%d %s %s\n", i, ent.mode, ent.name)
 			}
