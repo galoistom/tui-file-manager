@@ -166,7 +166,7 @@ func (m *module) handleBookmark(msg tea.Msg) tea.Cmd {
 	m.currentMode = modeNormal
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		path := Configs.Bookmark[msg.String()]
+		path := Configs.BOOKMARK[msg.String()]
 		if path != "" {
 			m.path = path
 			m.message= ""
@@ -408,7 +408,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "b":
 			m.currentMode = modeBookmark
 			var s strings.Builder
-			for i := range Configs.Bookmark {
+			for i := range Configs.BOOKMARK {
 				s.WriteString(" " + i)
 			}
 			m.message = s.String()
@@ -430,7 +430,8 @@ func (m module) View() tea.View {
 		indexSize = int(float64(m.width) * 0.45)
 	}
 	var rows []string
-	rows = append(rows, headerStyle.Render("📂 "+m.path))
+	headPath:=headerStyle.Render("📂 "+m.path)
+	rows = append(rows, headPath)
 	reserve := 3
 	listHeith := m.height - reserve
 	if listHeith < 0 {

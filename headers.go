@@ -120,7 +120,7 @@ type editorMsg struct{}
 type redrawMsg struct{}
 
 type Config struct {
-	Bookmark map[string]string `json:"bookmark"`
+	BOOKMARK map[string]string `json:"bookmark"`
 	SHELL    string            `json:"shell"`
 	EDITOR   string            `json:"editor"`
 	GAP      int               `json:"gap"`
@@ -160,6 +160,10 @@ func init() {
 	if err != nil {
 		fmt.Println("Error unamarshalling JSON: ", err)
 		os.Exit(1)
+	}
+	Configs.CONFIG= ExpandPath(Configs.CONFIG)
+	for a:=range Configs.BOOKMARK{
+		Configs.BOOKMARK[a]= ExpandPath(Configs.BOOKMARK[a])
 	}
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {

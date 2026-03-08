@@ -12,7 +12,7 @@ tui:
 chinese named file handling:
 [[https:https://github.com/aquilax/truncate][truncate]]
 
-Dependency for preview: chafa(image rendering), ffmpeg(convert vedio to image), libreoffice(convert office file to image), poppler(convert pdf to image)
+Dependency for preview: [[https://github.com/hpjansson/chafa/][chafa]](image rendering), [[https://ffmpeg.org/][ffmpeg]](convert vedio to image), [[https://www.libreoffice.org/][libreoffice]](convert office file to image), [[https://poppler.freedesktop.org/][poppler]](convert pdf to image)
 
 If you are using kitty, then there will be high resolution preview for images
 
@@ -34,8 +34,9 @@ It will creat a default configuration in "$HOME/.config/tui-fm/config.json", set
 12. "n" for creating new file/folder/symlink;
 13. "t" for opening a shell in current folder;
 14. "b" for jumping to your bookmakr;
-15. "M-x", ":" for input command;
-16. "M-x" commands:
+15. "." for showing hidden file;
+16. "M-x", ":" for input command;
+17. "M-x" commands:
     - "sh": execute shell command;
     - "up"/"down": to move focus up/down n;
     - "go": to do line n;

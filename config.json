@@ -1,11 +1,11 @@
 {
     "bookmark":{
-	"b":"/home/galoistom/math-note/notes/Books/",
-	"w":"/home/galoistom/web_for_server/",
-	"h":"/home/galoistom/"
+	"b":"~/math-note/notes/Books/",
+	"w":"~/web_for_server/",
+	"h":"~/"
     },
     "gap": 10,
-    "editor": "nvim",
+    "editor": "emacsclient -c -nw",
     "shell": "zsh",
     "config": "/home/galoistom/.config/tui-fm/config.json"
 }
