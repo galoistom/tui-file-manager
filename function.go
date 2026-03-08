@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"syscall"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -44,13 +45,31 @@ func (m *module) GotoFile(n int) tea.Cmd {
 
 func (m *module) Open(path string) tea.Cmd {
 	return func() tea.Msg {
-		err := exec.Command("xdg-open", path).Start()
-		if err != nil {
-			return err
+
+		cmd := exec.Command("xdg-open", path)
+
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setsid: true,
 		}
+
+		cmd.Stdout = nil
+		cmd.Stderr = nil
+		cmd.Stdin = nil
+
+		_ = cmd.Start()
+
 		return nil
 	}
 }
+// func (m *module) Open(path string) tea.Cmd {
+// 	return func() tea.Msg {
+// 		err := exec.Command("xdg-open", path).Start()
+// 		if err != nil {
+// 			return err
+// 		}
+// 		return nil
+// 	}
+// }
 
 func OpenShell(path string, command string) tea.Cmd {
 	c := exec.Command("sh", "-c", command)
