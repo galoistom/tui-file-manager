@@ -112,6 +112,7 @@ type module struct {
 	currentMode mode
 	tempFile    string
 	preview     bool
+	hide        bool
 }
 
 type itemsMsg []fileitm

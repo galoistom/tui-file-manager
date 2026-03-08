@@ -12,7 +12,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/mattn/go-runewidth"
-//	"golang.org/x/tools/refactor/rename"
 )
 
 func initialModel(path string) module {
@@ -27,10 +26,10 @@ func initialModel(path string) module {
 }
 
 func (m module) Init() tea.Cmd {
-	return FetchFile(m.path)
+	return FetchFile(m.path,false)
 }
 
-func FetchFile(path string) tea.Cmd {
+func FetchFile(path string, hide bool) tea.Cmd {
 	return func() tea.Msg {
 		ent, err := os.ReadDir(path)
 		if err != nil {
@@ -42,6 +41,9 @@ func FetchFile(path string) tea.Cmd {
 			mode: "d---------",
 		}}
 		for _, entry := range ent {
+			if !hide && entry.Name()[0]=='.'{
+				continue
+			}
 			info, _ := entry.Info()
 			items = append(items, fileitm{
 				name: entry.Name(),
@@ -82,14 +84,14 @@ func (m *module) handleDelete(msg tea.Msg) tea.Cmd {
 		case "c", "enter":
 			os.RemoveAll(m.entries[m.cursor].path)
 			m.GotoFile(min(m.cursor, len(m.entries)-2))
-			return FetchFile(m.path)
+			return FetchFile(m.path,m.hide)
 		case "s":
 			for i := range m.selected {
 				os.RemoveAll(m.entries[i].path)
 			}
 			m.GotoFile(min(m.cursor, len(m.entries)-1-len(m.selected)))
 			m.selected = make(map[int]struct{})
-			return FetchFile(m.path)
+			return FetchFile(m.path,m.hide)
 		}
 	}
 	return nil
@@ -167,7 +169,7 @@ func (m *module) handleBookmark(msg tea.Msg) tea.Cmd {
 		path := Configs.Bookmark[msg.String()]
 		if path != "" {
 			m.path = path
-			return FetchFile(m.path)
+			return FetchFile(m.path,m.hide)
 		}
 	}
 	return nil
@@ -193,7 +195,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case modeRename:
 		m.RenameUpdate()
 		m.currentMode = modeNormal
-		return m, FetchFile(m.path)
+		return m, FetchFile(m.path,m.hide)
 	}
 	switch msg := msg.(type) {
 	case error:
@@ -207,10 +209,10 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.entries = msg
 
 	case redrawMsg:
-		return m, FetchFile(m.path)
+		return m, FetchFile(m.path,m.hide)
 
 	case editorMsg:
-		return m, FetchFile(m.path)
+		return m, FetchFile(m.path,m.hide)
 
 	case tea.KeyPressMsg:
 		m.isError = false
@@ -258,7 +260,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.path = selected.path
 				m.cursor = 0
 				m.offset = 0
-				return m, FetchFile(m.path)
+				return m, FetchFile(m.path,m.hide)
 			case 'L':
 				realpath, err := filepath.EvalSymlinks(selected.path)
 				if err != nil {
@@ -275,7 +277,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if info.IsDir() {
 					m.path = realpath
 					m.cursor = 0
-					return m, FetchFile(m.path)
+					return m, FetchFile(m.path,m.hide)
 				} else {
 					return m, m.Open(realpath)
 				}
@@ -289,7 +291,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			selected := m.entries[m.cursor]
 			switch selected.mode[0] {
 			case '-':
-				return m, tea.Batch(OpenShell(m.path, Configs.EDITOR+" "+selected.path), FetchFile(m.path))
+				return m, tea.Batch(OpenShell(m.path, Configs.EDITOR+" "+selected.path), FetchFile(m.path,m.hide))
 			case 'L':
 				realpath, err := filepath.EvalSymlinks(selected.path)
 				if err != nil {
@@ -304,7 +306,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				if !info.IsDir() {
-					return m, tea.Batch(OpenShell(m.path, Configs.EDITOR+" "+realpath), FetchFile(m.path))
+					return m, tea.Batch(OpenShell(m.path, Configs.EDITOR+" "+realpath), FetchFile(m.path,m.hide))
 				}
 			}
 
@@ -357,7 +359,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
-			return m, FetchFile(m.path)
+			return m, FetchFile(m.path,m.hide)
 		case "c", "alt+y":
 			m.ti.SetValue("copyto ")
 			m.currentMode = modeCommand
@@ -398,7 +400,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//open shell
 		case "t":
 			if !m.preview {
-				return m, tea.Batch(OpenShell(m.path, Configs.SHELL), FetchFile(m.path))
+				return m, tea.Batch(OpenShell(m.path, Configs.SHELL), FetchFile(m.path,m.hide))
 			}
 
 		//book mark
@@ -409,8 +411,10 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				s.WriteString(" " + i)
 			}
 			m.message = s.String()
+		case ".":
+			m.hide= !m.hide
+			return m,FetchFile(m.path,m.hide)
 		}
-
 	}
 
 	// Return the updated model to the Bubble Tea runtime for processing.

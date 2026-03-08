@@ -167,7 +167,7 @@ func (m *module) ExecCommand() tea.Cmd {
 			return nil
 		}
 		m.message = "Succeed!"
-		return FetchFile(m.path)
+		return FetchFile(m.path,m.hide)
 	case "goto":
 		if len(insertCommand) == 2 {
 			path := ExpandPath(insertCommand[1])
@@ -189,7 +189,7 @@ func (m *module) ExecCommand() tea.Cmd {
 	case "rename":
 		if len(insertCommand) == 2 {
 			m.Rename(m.entries[m.cursor].path, insertCommand[1])
-			return FetchFile(m.path)
+			return FetchFile(m.path,m.hide)
 		} else {
 			m.message = "format incorrect"
 		}
