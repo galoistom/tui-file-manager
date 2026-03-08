@@ -61,15 +61,6 @@ func (m *module) Open(path string) tea.Cmd {
 		return nil
 	}
 }
-// func (m *module) Open(path string) tea.Cmd {
-// 	return func() tea.Msg {
-// 		err := exec.Command("xdg-open", path).Start()
-// 		if err != nil {
-// 			return err
-// 		}
-// 		return nil
-// 	}
-// }
 
 func OpenShell(path string, command string) tea.Cmd {
 	c := exec.Command("sh", "-c", command)
