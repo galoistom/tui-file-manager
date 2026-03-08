@@ -89,7 +89,7 @@ func (m *module) handleDelete(msg tea.Msg) tea.Cmd {
 			for i := range m.selected {
 				os.RemoveAll(m.entries[i].path)
 			}
-			m.GotoFile(min(m.cursor, len(m.entries)-1-len(m.selected)))
+			m.GotoFile(0)
 			m.selected = make(map[int]struct{})
 			return FetchFile(m.path,m.hide)
 		}
@@ -169,6 +169,7 @@ func (m *module) handleBookmark(msg tea.Msg) tea.Cmd {
 		path := Configs.Bookmark[msg.String()]
 		if path != "" {
 			m.path = path
+			m.message= ""
 			return FetchFile(m.path,m.hide)
 		}
 	}
@@ -413,6 +414,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.message = s.String()
 		case ".":
 			m.hide= !m.hide
+			m.GotoFile(0)
 			return m,FetchFile(m.path,m.hide)
 		}
 	}
