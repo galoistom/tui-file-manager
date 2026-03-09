@@ -312,10 +312,11 @@ func (m module) Preview(width int, height int) string {
 		return "failed to preview: " + err.Error()
 	}
 	if f.IsDir() {
-		out, err := exec.Command("tree","-C" , "-L",
+		out, err := exec.Command("tree", "-s", "-h", "-C", "-L",
 			"3", m.entries[m.cursor].path).Output()
 		if err != nil {
-			return "failed to review tree: " + err.Error()
+			out, err= exec.Command("ls", "--color","-s", "-h").Output()
+			if err!=nil{return "failed to review tree: " + err.Error()}
 		}
 		return style.Render(string(out))
 	}
