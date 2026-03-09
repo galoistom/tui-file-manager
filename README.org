@@ -12,7 +12,7 @@ tui:
 chinese named file handling:
 [[https:https://github.com/aquilax/truncate][truncate]]
 
-Dependency for preview: [[https://github.com/hpjansson/chafa/][chafa]](image rendering), [[https://ffmpeg.org/][ffmpeg]](convert vedio to image), [[https://www.libreoffice.org/][libreoffice]](convert office file to image), [[https://poppler.freedesktop.org/][poppler]](convert pdf to image)
+Dependency for preview: [[https://github.com/hpjansson/chafa/][chafa]](image rendering), [[https://ffmpeg.org/][ffmpeg]](convert vedio to image), [[https://www.libreoffice.org/][libreoffice]](convert office file to image), [[https://poppler.freedesktop.org/][poppler]](convert pdf to image), [[https://github.com/sharkdp/bat][bat]](for syntax highlighting)
 
 If you are using kitty, then there will be high resolution preview for images
 
