@@ -1,14 +1,10 @@
 package main
 
 import (
-	"bytes"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"crypto/md5"
 	"fmt"
-	"github.com/alecthomas/chroma/v2/formatters"
-	"github.com/alecthomas/chroma/v2/lexers"
-	"github.com/alecthomas/chroma/v2/styles"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -358,50 +354,23 @@ func (m module) Preview(width int, height int) string {
 		case ".gz", ".tgz":
 			index = exec.Command("tar", "-tzf", path)
 		default:
-			index = exec.Command("cat", "-n", path)
+			index = exec.Command(
+				"bat",
+				"--binary=no-printing",
+				"--color=always",
+				"--style=plain",
+				"--paging=never",
+				"-S", "-r", ":"+strconv.Itoa(height-5),
+				path,
+			)
 		}
-		restrict := exec.Command("head", "-n", strconv.Itoa(height-5))
-		pipe, err := index.StdoutPipe()
-		if err != nil {
-			return "failed to pipe: " + err.Error()
-		}
-		restrict.Stdin = pipe
-		err = index.Start()
+		out,err := index.Output()
 		if err != nil {
 			return "failed to cat: " + err.Error()
 		}
-		out, err := restrict.Output()
-		if err != nil {
-			return "failed to get out: " + err.Error()
-		}
-		return style.Render(highlightCode(path, string(out)))
+		return style.Render(string(out))
 	}
 	return style.Render("unknow")
-}
-
-func highlightCode(path string, content string) string {
-	// 1. 根据文件名获取对应的词法分析器 (Lexer)
-	lexer := lexers.Match(path)
-	if lexer == nil {
-		lexer = lexers.Fallback
-	}
-
-	style := styles.Get("dracula")
-	if style == nil {
-		style = styles.Fallback
-	}
-
-	formatter := formatters.Get("terminal256")
-	if formatter == nil {
-		formatter = formatters.Fallback
-	}
-
-	// 4. 进行高亮处理
-	var buf bytes.Buffer
-	iterator, _ := lexer.Tokenise(nil, content)
-	formatter.Format(&buf, style, iterator)
-
-	return buf.String()
 }
 
 func getCacheName(path string) string {
@@ -459,7 +428,7 @@ func (m *module) PreviewCmd(imagePath string) tea.Cmd {
 		return nil
 	}
 	yOffset := 2
-	x := int(float64(m.width)*0.45) + 2 // 图片起始列
+	x := int(float64(m.width)*0.45) + 2
 	cmd := exec.Command("kitty", "+kitten", "icat",
 		"--z-index", "-1",
 		"--place", fmt.Sprintf("%dx%d@%dx%d", m.width-x, m.height-3, x, yOffset),
