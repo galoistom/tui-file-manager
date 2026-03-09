@@ -26,7 +26,7 @@ func initialModel(path string) module {
 }
 
 func (m module) Init() tea.Cmd {
-	return FetchFile(m.path,false)
+	return FetchFile(m.path, false)
 }
 
 func FetchFile(path string, hide bool) tea.Cmd {
@@ -41,7 +41,7 @@ func FetchFile(path string, hide bool) tea.Cmd {
 			mode: "d---------",
 		}}
 		for _, entry := range ent {
-			if !hide && entry.Name()[0]=='.'{
+			if !hide && entry.Name()[0] == '.' {
 				continue
 			}
 			info, _ := entry.Info()
@@ -84,14 +84,14 @@ func (m *module) handleDelete(msg tea.Msg) tea.Cmd {
 		case "c", "enter":
 			os.RemoveAll(m.entries[m.cursor].path)
 			m.GotoFile(min(m.cursor, len(m.entries)-2))
-			return FetchFile(m.path,m.hide)
+			return FetchFile(m.path, m.hide)
 		case "s":
 			for i := range m.selected {
 				os.RemoveAll(m.entries[i].path)
 			}
 			m.GotoFile(0)
 			m.selected = make(map[int]struct{})
-			return FetchFile(m.path,m.hide)
+			return FetchFile(m.path, m.hide)
 		}
 	}
 	return nil
@@ -169,8 +169,8 @@ func (m *module) handleBookmark(msg tea.Msg) tea.Cmd {
 		path := Configs.BOOKMARK[msg.String()]
 		if path != "" {
 			m.path = path
-			m.message= ""
-			return FetchFile(m.path,m.hide)
+			m.message = ""
+			return FetchFile(m.path, m.hide)
 		}
 	}
 	return nil
@@ -196,7 +196,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case modeRename:
 		m.RenameUpdate()
 		m.currentMode = modeNormal
-		return m, FetchFile(m.path,m.hide)
+		return m, FetchFile(m.path, m.hide)
 	}
 	switch msg := msg.(type) {
 	case error:
@@ -210,10 +210,10 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.entries = msg
 
 	case redrawMsg:
-		return m, FetchFile(m.path,m.hide)
+		return m, FetchFile(m.path, m.hide)
 
 	case editorMsg:
-		return m, FetchFile(m.path,m.hide)
+		return m, FetchFile(m.path, m.hide)
 
 	case tea.KeyPressMsg:
 		m.isError = false
@@ -261,7 +261,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.path = selected.path
 				m.cursor = 0
 				m.offset = 0
-				return m, FetchFile(m.path,m.hide)
+				return m, FetchFile(m.path, m.hide)
 			case 'L':
 				realpath, err := filepath.EvalSymlinks(selected.path)
 				if err != nil {
@@ -278,7 +278,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if info.IsDir() {
 					m.path = realpath
 					m.cursor = 0
-					return m, FetchFile(m.path,m.hide)
+					return m, FetchFile(m.path, m.hide)
 				} else {
 					return m, m.Open(realpath)
 				}
@@ -287,12 +287,18 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.Open(selected.path)
 			}
 
+		case "h":
+			m.path = filepath.Dir(m.path)
+			m.cursor = 0
+			m.offset = 0
+			return m, FetchFile(m.path, m.hide)
+
 		// press e to edit file in vim
 		case "e":
 			selected := m.entries[m.cursor]
 			switch selected.mode[0] {
 			case '-':
-				return m, tea.Batch(OpenShell(m.path, Configs.EDITOR+" "+selected.path), FetchFile(m.path,m.hide))
+				return m, tea.Batch(OpenShell(m.path, Configs.EDITOR+" "+selected.path), FetchFile(m.path, m.hide))
 			case 'L':
 				realpath, err := filepath.EvalSymlinks(selected.path)
 				if err != nil {
@@ -307,7 +313,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				if !info.IsDir() {
-					return m, tea.Batch(OpenShell(m.path, Configs.EDITOR+" "+realpath), FetchFile(m.path,m.hide))
+					return m, tea.Batch(OpenShell(m.path, Configs.EDITOR+" "+realpath), FetchFile(m.path, m.hide))
 				}
 			}
 
@@ -320,7 +326,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			var index strings.Builder
-			index.WriteString(m.path+"\n")
+			index.WriteString(m.path + "\n")
 			for i, ent := range m.entries {
 				fmt.Fprintf(&index, "%d %s %s\n", i, ent.mode, ent.name)
 			}
@@ -361,7 +367,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 				}
 			}
-			return m, FetchFile(m.path,m.hide)
+			return m, FetchFile(m.path, m.hide)
 		case "c", "alt+y":
 			m.ti.SetValue("copyto ")
 			m.currentMode = modeCommand
@@ -402,7 +408,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		//open shell
 		case "t":
 			if !m.preview {
-				return m, tea.Batch(OpenShell(m.path, Configs.SHELL), FetchFile(m.path,m.hide))
+				return m, tea.Batch(OpenShell(m.path, Configs.SHELL), FetchFile(m.path, m.hide))
 			}
 
 		//book mark
@@ -414,9 +420,9 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.message = s.String()
 		case ".":
-			m.hide= !m.hide
+			m.hide = !m.hide
 			m.GotoFile(0)
-			return m,FetchFile(m.path,m.hide)
+			return m, FetchFile(m.path, m.hide)
 		}
 	}
 
@@ -431,7 +437,7 @@ func (m module) View() tea.View {
 		indexSize = int(float64(m.width) * 0.45)
 	}
 	var rows []string
-	headPath:=headerStyle.Render("📂 "+m.path)
+	headPath := headerStyle.Render("📂 " + m.path)
 	rows = append(rows, headPath)
 	reserve := 3
 	listHeith := m.height - reserve
