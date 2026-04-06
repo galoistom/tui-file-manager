@@ -394,7 +394,7 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ti.Focus()
 
 		//searching
-		case "ctrl+s":
+		case "ctrl+s", "/":
 			m.currentMode = modeSearch
 			m.searching = true
 			m.ti.Focus()
@@ -407,9 +407,8 @@ func (m module) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		//open shell
 		case "t":
-			if !m.preview {
-				return m, tea.Batch(OpenShell(m.path, Configs.SHELL), FetchFile(m.path, m.hide))
-			}
+			m.preview= false
+			return m, tea.Batch(OpenShell(m.path, Configs.SHELL), FetchFile(m.path, m.hide))
 
 		//book mark
 		case "b":

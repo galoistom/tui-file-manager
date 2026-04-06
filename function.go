@@ -33,8 +33,8 @@ func (m *module) GotoFile(n int) tea.Cmd {
 		m.offset = max(0, min(m.offset, n-Configs.GAP))
 	}
 	m.cursor = n
-	out,err:=exec.Command("file", m.entries[m.cursor].path).Output()
-	if err==nil{m.message=getValue(string(out))}
+	// out,err:=exec.Command("file", m.entries[m.cursor].path).Output()
+	// if err==nil{m.message=getValue(string(out))}
 	if m.preview {
 		return m.PreviewCmd(m.entries[m.cursor].path)
 	}
@@ -155,7 +155,8 @@ func (m *module) Search(pattern string, place int, mod bool) int {
 }
 
 func (m *module) ExecCommand() tea.Cmd {
-	insertCommand := strings.Fields(m.ti.Value())
+	command:= m.ti.Value()
+	insertCommand := strings.SplitN(command, " ", 2)
 	switch insertCommand[0] {
 	case "go":
 		n, err := strconv.Atoi(insertCommand[1])
