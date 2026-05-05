@@ -33,8 +33,6 @@ func (m *module) GotoFile(n int) tea.Cmd {
 		m.offset = max(0, min(m.offset, n-Configs.GAP))
 	}
 	m.cursor = n
-	// out,err:=exec.Command("file", m.entries[m.cursor].path).Output()
-	// if err==nil{m.message=getValue(string(out))}
 	if m.preview {
 		return m.PreviewCmd(m.entries[m.cursor].path)
 	}
@@ -362,6 +360,7 @@ func (m module) Preview(width int, height int) string {
 				"--color=always",
 				"--style=plain",
 				"--paging=never",
+				"--theme=Dracula",
 				"-S", "-r", ":"+strconv.Itoa(height-5),
 				path,
 			)
